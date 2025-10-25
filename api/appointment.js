@@ -12,14 +12,14 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    // const parsedDate = new Date(date);
-    // if (isNaN(parsedDate)) {
-    //   return res.status(400).json({ message: "Invalid date format." });
-    // }
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate)) {
+      return res.status(400).json({ message: "Invalid date format." });
+    }
 
     const newAppointment = new Appointments({
       userId,
-      date,
+      date: parsedDate,
       time,
     });
 

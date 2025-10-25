@@ -30,18 +30,43 @@ router.post("/register", async (req, res) => {
 });
 
 // Login Crud
+// Login Crud
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  //     const { username, password } = req.body;
+
+  //   try {
+  //     const user = await Users.findOne({ username });
+  //     if (!user) return res.status(404).json({ message: "User not found" });
+
+  //     const isMatch = await bcrypt.compare(password, user.password);
+  //     if (!isMatch)
+  //       return res.status(401).json({ message: "Invalid credentials" });
+
+  //     const token = jwt.sign(
+  //       { id: user._id, role: user.role },
+  //       JWT_SECRET,
+  //       { expiresIn: "7d" }
+  //     );
+
+  //     res.json({ message: "Login successful", token, user });
+  //   } catch (err) {
+  //     res.status(500).json({ error: err.message });
+  //   }
+  // });
+
+  const { username, password } = req.body;
 
   try {
-    const user = await Users.findOne({ email });
+    const user = await Users.findOne({ username });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({ message: "Login successful", token, user });
   } catch (err) {
