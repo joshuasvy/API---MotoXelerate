@@ -4,41 +4,19 @@ import Users from "../models/Users.js";
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
+  console.log("📥 Received from frontend:", req.body);
   try {
-    const { email, password } = req.body;
+    const { name, contact, email, password } = req.body;
 
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
+    if (!name || !contact || !email || !password) {
+      return res.status(400).json({ message: "All fields are required." });
     }
 
-    const newUser = new Users({ email, password });
+    const newUser = new Users({ name, contact, email, password });
     await newUser.save();
 
-    res
-      .status(201)
-      .json({ message: "User registered successfully", user: newUser });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Alias: also accept POST to the router root so clients that POST /api/user will work
-router.post("/", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
-    }
-
-    const newUser = new User({ email, password });
-    await newUser.save();
-
-    res.status(201).json(newUser);
+    res.status(201).json({ message: "User registered successfully" });
+    console.log("Incoming data:", req.body);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
