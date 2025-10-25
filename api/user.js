@@ -1,9 +1,9 @@
 import express from "express";
-import User from "../models/Users.js";
+import Users from "../models/Users.js";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
         .json({ message: "Email and password are required." });
     }
 
-    const newUser = new User({ email, password });
+    const newUser = new Users({ email, password });
     await newUser.save();
 
     res.status(201).json(newUser);

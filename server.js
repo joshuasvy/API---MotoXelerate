@@ -2,7 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
-import userRoutes from "./controllers/user.js"; // ✅ Modular route import
+import userRoutes from "./api/user.js"; // ✅ Modular route import
 
 dotenv.config();
 const app = express();
@@ -23,7 +23,7 @@ mongoose
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 // Routes
-app.use("/api/users", userRoutes); // ✅ Mount route path
+app.use("/api/user", userRoutes); // ✅ Mount route path
 
 // 404 handler
 app.use((req, res) => {
