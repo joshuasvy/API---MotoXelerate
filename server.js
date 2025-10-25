@@ -23,7 +23,8 @@ mongoose
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 // Routes
-app.use("/api/user", userRoutes); // ✅ Mount route path
+app.use("/api/user", userRoutes); // ✅ Mount route path (singular)
+app.use("/api/users", userRoutes); // also mount plural so /api/users and /api/user both work
 
 // 404 handler
 app.use((req, res) => {
