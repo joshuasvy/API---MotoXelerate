@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
+import reservationRoutes from "./api/reservation.js";
 
 dotenv.config();
 const app = express();
@@ -27,6 +28,7 @@ mongoose
 app.use("/api/user", userRoutes); // ✅ Mount route path (singular)
 // app.use("/api/users", userRoutes);
 app.use("/api/appointment", appointmentRoutes); // also mount plural so /api/users and /api/user both work
+app.use("/api/reservation", reservationRoutes); // also mount plural so /api/users and /api/user both work
 
 // 404 handler
 app.use((req, res) => {
