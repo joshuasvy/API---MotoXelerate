@@ -6,7 +6,7 @@ const appointmentSchema = new mongoose.Schema({
     ref: "Users",
     required: true,
   },
-  date: { type: String, required: true }, // ✅ full date object
+  date: { type: Date, required: true }, // ✅ full date object
   time: { type: String, required: true }, // ✅ "14:00" or "2:30 PM"
   status: { type: String, default: "pending" }, // or "confirmed", "cancelled"
 });
