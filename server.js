@@ -25,7 +25,7 @@ mongoose
 
 // Routes
 app.use("/api/user", userRoutes); // ✅ Mount route path (singular)
-// app.use("/api/users", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/appointment", appointmentRoutes); // also mount plural so /api/users and /api/user both work
 
 // 404 handler
