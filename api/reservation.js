@@ -5,37 +5,26 @@ const router = express.Router();
 
 // Create a new reservation
 router.post("/", async (req, res) => {
-  console.log("📥 Reservation route hit:", req.body);
-  try {
-    const { name, serviceType, mechanic, schedule, time, fee, status } =
-      req.body;
+  const { name, serviceType, mechanic, schedule, time, fee, status } = req.body;
 
-    // Basic validation
-    const fields = [name, serviceType, mechanic, schedule, time, fee];
-    if (fields.some((f) => f === undefined || f === null || f === "")) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-    if (isNaN(Number(fee))) {
-      return res.status(400).json({ message: "Fee must be a valid number" });
-    }
-
-    const newReservation = new Reservations({
-      name,
-      serviceType,
-      mechanic,
-      schedule,
-      time,
-      fee,
-      status,
-    });
-
-    await newReservation.save();
-    res
-      .status(201)
-      .json({ message: "Reservation created", reservation: newReservation });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (!name || !serviceType || !mechanic || !schedule || !time || !fee) {
+    return res.status(400).json({ message: "All fields are required" });
   }
+
+  const newAppointment = new Appointments({
+    name,
+    serviceType,
+    mechanic,
+    schedule,
+    time,
+    fee,
+    status,
+  });
+
+  await newAppointment.save();
+  res
+    .status(201)
+    .json({ message: "Appointment booked!", appointment: newAppointment });
 });
 
 // Optional: Get all reservations
