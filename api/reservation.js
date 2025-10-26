@@ -5,13 +5,23 @@ const router = express.Router();
 
 // Create a new reservation
 router.post("/", async (req, res) => {
+  console.log("📥 Reservation route hit:", req.body);
   try {
     const { name, serviceType, mechanic, schedule, time, fee, status } =
       req.body;
 
     // Basic validation
-    if (!name || !serviceType || !mechanic || !schedule || !time || !fee) {
-      return res.status(400).json({ message: "All fields are required." });
+    if (
+      !name?.trim() ||
+      !serviceType?.trim() ||
+      !mechanic?.trim() ||
+      !schedule?.trim() ||
+      !time?.trim() ||
+      fee === undefined ||
+      fee === null ||
+      isNaN(Number(fee))
+    ) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const newReservation = new Reservations({
@@ -36,7 +46,7 @@ router.post("/", async (req, res) => {
 // Optional: Get all reservations
 router.get("/all", async (req, res) => {
   try {
-    const reservations = await Reservation.find();
+    const reservations = await Reservations.find();
     res.json(reservations);
   } catch (err) {
     res.status(500).json({ error: err.message });
