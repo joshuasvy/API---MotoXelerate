@@ -11,17 +11,12 @@ router.post("/", async (req, res) => {
       req.body;
 
     // Basic validation
-    if (
-      !name?.trim() ||
-      !serviceType?.trim() ||
-      !mechanic?.trim() ||
-      !schedule?.trim() ||
-      !time?.trim() ||
-      fee === undefined ||
-      fee === null ||
-      isNaN(Number(fee))
-    ) {
+    const fields = [name, serviceType, mechanic, schedule, time, fee];
+    if (fields.some((f) => f === undefined || f === null || f === "")) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+    if (isNaN(Number(fee))) {
+      return res.status(400).json({ message: "Fee must be a valid number" });
     }
 
     const newReservation = new Reservations({
