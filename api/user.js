@@ -11,19 +11,17 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // Register Crud
 router.post("/register", async (req, res) => {
-  console.log("📥 Received from frontend:", req.body);
   try {
-    const { name, contact, email, password } = req.body;
+    const { username, name, contact, email, password } = req.body;
 
-    if (!name || !contact || !email || !password) {
+    if (!username || !name || !contact || !email || !password) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    const newUser = new Users({ name, contact, email, password });
+    const newUser = new Users({ username, name, contact, email, password });
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
-    console.log("Incoming data:", req.body);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
