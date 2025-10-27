@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
+import adminRoutes from "./api/admin.js";
 
 dotenv.config();
 const app = express();
@@ -24,10 +25,12 @@ mongoose
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 // Routes
-app.use("/api/user", userRoutes); // ✅ Mount route path (singular)
+app.use("/api/user", userRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
 // 404 handler
 app.use((req, res) => {
+  console.log("❌ 404 hit:", req.method, req.originalUrl);
   res.status(404).json({ message: "Route Not Found" });
 });
 
