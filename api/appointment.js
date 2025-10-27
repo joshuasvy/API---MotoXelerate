@@ -43,9 +43,13 @@ router.post("/", authToken, async (req, res) => {
 
 // ✅ Public GET route for admin dashboard
 router.get("/", async (req, res) => {
+  console.log("📥 GET /api/appointment hit");
   try {
     const appointments = await Appointments.find().sort({ date: 1 });
-    res.status(200).json({ appointments });
+    res.status(200).json({
+      message: "Route is working!",
+      appointments,
+    });
   } catch (err) {
     console.error("❌ Fetch error:", err);
     res.status(500).json({ error: err.message });
