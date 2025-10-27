@@ -58,4 +58,24 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.delete("/:id", authToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    const { id } = req.params;
+    const deleted = await Appointments.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Appointment not found." });
+    }
+
+    res.status(200).json({ message: "Appointment deleted successfully." });
+  } catch (err) {
+    console.error("❌ Delete error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
