@@ -1,25 +1,28 @@
 import express from "express";
 import Appointments from "../models/Appointments.js";
+import Users from "../models/Users.js"; // ✅ Needed to fetch user info
+import { authToken } from "../middleware/authToken.js"; // ✅ Auth middleware
 
-const router = express.Router();
+const router = express.Router(); // ✅ This line was missing
 
-router.post("/", async (req, res) => {
-  console.log("📥 Appointment route hit:", req.body);
+router.post("/", authToken, async (req, res) => {
   try {
-    const { userId, date, time } = req.body;
+    const { date, time } = req.body;
+    const userId = req.user.id; // ✅ pulled from decoded token
 
-    if (!userId || !date || !time) {
-      return res.status(400).json({ message: "All fields are required." });
+    if (!date || !time) {
+      return res.status(400).json({ message: "Date and time are required." });
     }
 
-    const parsedDate = new Date(date);
-    if (isNaN(parsedDate)) {
-      return res.status(400).json({ message: "Invalid date format." });
-    }
+    const user = await Users.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     const newAppointment = new Appointments({
       userId,
-      date: parsedDate,
+      customer_Name: user.name,
+      service_Type: "Change Oil", // or dynamic
+      mechanic: "Mark Santos", // or dynamic
+      date: new Date(date),
       time,
     });
 
@@ -30,7 +33,7 @@ router.post("/", async (req, res) => {
       appointment: newAppointment,
     });
   } catch (err) {
-    console.error("❌ Appointment save error:", err);
+    console.error("❌ Booking error:", err);
     res.status(500).json({ error: err.message });
   }
 });

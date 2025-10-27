@@ -6,9 +6,12 @@ const appointmentSchema = new mongoose.Schema({
     ref: "Users",
     required: true,
   },
-  date: { type: Date, required: true }, // ✅ full date object
-  time: { type: String, required: true }, // ✅ "14:00" or "2:30 PM"
-  status: { type: String, default: "pending" }, // or "confirmed", "cancelled"
+  customer_Name: { type: String, required: true },
+  service_Type: { type: String, required: true },
+  mechanic: { type: String, required: true },
+  date: { type: Date, required: true },
+  time: { type: String, required: true },
+  status: { type: String, default: "pending" },
 });
 
 export default mongoose.model("Appointment", appointmentSchema);
