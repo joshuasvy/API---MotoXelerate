@@ -6,13 +6,14 @@ import { authToken } from "../middleware/authToken.js"; // ✅ Auth middleware
 const router = express.Router(); // ✅ This line was missing
 
 router.post("/", authToken, async (req, res) => {
+  console.log("📥 Incoming body:", req.body);
   try {
-    const { date, time, service_Type } = req.body;
+    const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id; // ✅ pulled from decoded token
 
-    if (!date || !time || !service_Type) {
+    if (!date || !time || !service_Type || !service_Charge) {
       return res.status(400).json({
-        message: "Date, time, and service type are required.",
+        message: "Date, time, service type, and service charge are required.",
       });
     }
 
@@ -26,6 +27,7 @@ router.post("/", authToken, async (req, res) => {
       mechanic: "", // left blank for admin to assign later
       date: new Date(date),
       time,
+      service_Charge,
       status: "pending",
     });
 
