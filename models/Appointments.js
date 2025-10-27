@@ -11,6 +11,7 @@ const appointmentSchema = new mongoose.Schema({
   mechanic: { type: String, default: "" },
   date: { type: Date, required: true },
   time: { type: String, required: true },
+  service_Charge: { type: Number, required: true },
   status: { type: String, default: "pending" },
 });
 
