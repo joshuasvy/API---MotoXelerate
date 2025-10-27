@@ -58,6 +58,27 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.put("/:id", authToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updated = await Appointment.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
+
+    if (!updated)
+      return res.status(404).json({ message: "Appointment not found" });
+
+    res
+      .status(200)
+      .json({ message: "Appointment updated", appointment: updated });
+  } catch (err) {
+    console.error("❌ Update error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete("/:id", authToken, async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." });
