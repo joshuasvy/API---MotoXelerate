@@ -1,5 +1,6 @@
 import express from "express";
 import Users from "../models/Users.js";
+import { authToken } from "../middleware/authToken.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -8,6 +9,23 @@ const router = express.Router();
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
+
+router.get("/me", authToken, async (req, res) => {
+  try {
+    const user = await Users.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (err) {
+    console.error("❌ /me route error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Register Crud
 router.post("/register", async (req, res) => {
