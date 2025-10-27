@@ -63,12 +63,13 @@ router.put("/:id", authToken, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const updated = await Appointment.findByIdAndUpdate(id, updates, {
+    const updated = await Appointments.findByIdAndUpdate(id, updates, {
       new: true,
     });
 
-    if (!updated)
+    if (!updated) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
 
     res
       .status(200)
