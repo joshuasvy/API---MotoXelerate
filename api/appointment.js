@@ -7,11 +7,13 @@ const router = express.Router(); // ✅ This line was missing
 
 router.post("/", authToken, async (req, res) => {
   try {
-    const { date, time } = req.body;
+    const { date, time, service_Type } = req.body;
     const userId = req.user.id; // ✅ pulled from decoded token
 
-    if (!date || !time) {
-      return res.status(400).json({ message: "Date and time are required." });
+    if (!date || !time || !service_Type) {
+      return res.status(400).json({
+        message: "Date, time, and service type are required.",
+      });
     }
 
     const user = await Users.findById(userId);
@@ -20,10 +22,11 @@ router.post("/", authToken, async (req, res) => {
     const newAppointment = new Appointments({
       userId,
       customer_Name: user.name,
-      service_Type: "Change Oil", // or dynamic
-      mechanic: "Mark Santos", // or dynamic
+      service_Type,
+      mechanic: "", // left blank for admin to assign later
       date: new Date(date),
       time,
+      status: "pending",
     });
 
     await newAppointment.save();
