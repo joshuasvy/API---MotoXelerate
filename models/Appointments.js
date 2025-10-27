@@ -8,7 +8,7 @@ const appointmentSchema = new mongoose.Schema({
   },
   customer_Name: { type: String, required: true },
   service_Type: { type: String, required: true },
-  mechanic: { type: String, required: true },
+  mechanic: { type: String, default: "" },
   date: { type: Date, required: true },
   time: { type: String, required: true },
   status: { type: String, default: "pending" },
