@@ -5,6 +5,7 @@ import cors from "cors";
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
 import adminRoutes from "./api/admin.js";
+import xenditGcashRoutes from "./api/xenditGcash.js";
 
 dotenv.config();
 const app = express();
@@ -28,6 +29,7 @@ mongoose
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
+app.use("/api/gcash", xenditGcashRoutes);
 // 404 handler
 app.use((req, res) => {
   console.log("❌ 404 hit:", req.method, req.originalUrl);
