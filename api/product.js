@@ -36,4 +36,15 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.get("/", async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (err) {
+    console.error("Error fetching products:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 export default router;
