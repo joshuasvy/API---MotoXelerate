@@ -31,8 +31,8 @@ router.post("/", async (req, res) => {
     const saved = await newProduct.save();
     res.status(201).json(saved);
   } catch (err) {
-    console.error("Error creating product:", err.message);
-    res.status(500).json({ error: "Failed to create product" });
+    console.error("Error creating product:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
