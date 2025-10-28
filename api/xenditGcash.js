@@ -11,18 +11,19 @@ router.post("/", async (req, res) => {
     throw new Error("Missing XENDIT_GCASH_API in environment variables");
   }
 
+  const callbackUrl = "https://api-motoxelerate.onrender.com/api/gcash/webhook";
+
   const payload = {
     reference_id: `gcash-${Date.now()}`,
     currency: "PHP",
-    amount: 1000,
+    amount: amount || 1000, // use dynamic amount if provided
     checkout_method: "ONE_TIME_PAYMENT",
     channel_code: "PH_GCASH",
     channel_properties: {
       success_redirect_url: "myapp://gcash-success",
       failure_redirect_url: "myapp://gcash-failure",
     },
-    callback_url:
-      "https://api-motoxelerate.onrender.com/api/xenditGcash/webhook",
+    // ❌ Do NOT include callback_url here
   };
 
   try {
@@ -36,7 +37,7 @@ router.post("/", async (req, res) => {
         },
         headers: {
           "Content-Type": "application/json",
-          "x-callback-url": payload.callback_url,
+          "x-callback-url": callbackUrl,
         },
       }
     );
