@@ -36,6 +36,21 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+    if (!updated) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error("Error updating product:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find();
@@ -45,6 +60,5 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 export default router;
