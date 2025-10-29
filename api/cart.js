@@ -3,10 +3,14 @@ import Cart from "../models/Cart.js";
 
 const router = express.Router();
 
-// 🛒 Create or update cart
+// 🛒 Create or update cart (no quantity)
 router.post("/", async (req, res) => {
   console.log("📥 Incoming cart payload:", req.body);
-  const { userId, productId, quantity } = req.body;
+  const { userId, productId } = req.body;
+
+  if (!userId || !productId) {
+    return res.status(400).json({ error: "Missing userId or productId." });
+  }
 
   try {
     let cart = await Cart.findOne({ userId });
@@ -14,27 +18,28 @@ router.post("/", async (req, res) => {
     if (!cart) {
       cart = new Cart({
         userId,
-        items: [{ productId, quantity }],
+        items: [{ productId }],
       });
       console.log("🆕 New cart created");
     } else {
-      const existingItem = cart.items.find(
+      const alreadyInCart = cart.items.some(
         (item) => item.productId.toString() === productId
       );
 
-      if (existingItem) {
-        existingItem.quantity += quantity || 1;
-        console.log("🔁 Updated quantity for existing item");
-      } else {
-        cart.items.push({ productId, quantity });
+      if (!alreadyInCart) {
+        cart.items.push({ productId });
         console.log("➕ Added new item to cart");
+      } else {
+        console.log("🔁 Item already in cart, no action taken");
       }
     }
 
     const saved = await cart.save();
     const populated = await Cart.findById(saved._id)
+      .populate("userId", "name")
       .populate("items.productId")
-      .exec(); // ✅ add .exec()
+      .exec();
+
     res.status(201).json(populated);
   } catch (err) {
     console.error("❌ Error creating/updating cart:", err);
@@ -42,12 +47,14 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✏️ Update cart by ID
+// ✏️ Update cart by ID (e.g. toggle selected)
 router.put("/:id", async (req, res) => {
   try {
     const updated = await Cart.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    }).populate("items.productId");
+    })
+      .populate("userId", "name")
+      .populate("items.productId");
 
     if (!updated) {
       return res.status(404).json({ message: "Cart not found" });
@@ -60,7 +67,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// 🗑 Delete cart by ID
+// 🗑 Delete entire cart by ID
 router.delete("/:id", async (req, res) => {
   try {
     const deleted = await Cart.findByIdAndDelete(req.params.id);

@@ -3,17 +3,12 @@ import mongoose from "mongoose";
 const cartItemSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product", // ✅ must match your Product model name
+    ref: "Product", // ✅ links to your Product model
     required: true,
-  },
-  quantity: {
-    type: Number,
-    default: 1,
-    min: 1,
   },
   selected: {
     type: Boolean,
-    default: false,
+    default: false, // ✅ useful for multi-select checkout
   },
 });
 
@@ -21,11 +16,14 @@ const cartSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Users", // ✅ must match your Users model name
+      ref: "Users", // ✅ links to your Users model
       required: true,
+      unique: true, // ✅ ensures one cart per user
     },
-
-    items: [cartItemSchema],
+    items: {
+      type: [cartItemSchema],
+      default: [], // ✅ ensures empty array on creation
+    },
   },
   { timestamps: true }
 );
