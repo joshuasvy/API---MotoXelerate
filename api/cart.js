@@ -5,7 +5,7 @@ const router = express.Router();
 
 // 🛒 Create or update cart
 router.post("/", async (req, res) => {
-  console.log("Incoming cart payload:", req.body);
+  console.log("📥 Incoming cart payload:", req.body);
   const { userId, productId, quantity } = req.body;
 
   try {
@@ -16,6 +16,7 @@ router.post("/", async (req, res) => {
         userId,
         items: [{ productId, quantity }],
       });
+      console.log("🆕 New cart created");
     } else {
       const existingItem = cart.items.find(
         (item) => item.productId.toString() === productId
@@ -23,15 +24,20 @@ router.post("/", async (req, res) => {
 
       if (existingItem) {
         existingItem.quantity += quantity || 1;
+        console.log("🔁 Updated quantity for existing item");
       } else {
         cart.items.push({ productId, quantity });
+        console.log("➕ Added new item to cart");
       }
     }
 
     const saved = await cart.save();
-    res.status(201).json(saved);
+    const populated = await saved.populate("items.productId").execPopulate();
+
+    console.log("✅ Cart saved:", populated);
+    res.status(201).json(populated);
   } catch (err) {
-    console.error("Error creating/updating cart:", err);
+    console.error("❌ Error creating/updating cart:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -41,17 +47,20 @@ router.put("/:id", async (req, res) => {
   try {
     const updated = await Cart.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    });
+    }).populate("items.productId");
+
     if (!updated) {
       return res.status(404).json({ message: "Cart not found" });
     }
+
     res.json(updated);
   } catch (err) {
-    console.error("Error updating cart:", err);
+    console.error("❌ Error updating cart:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// 🗑 Delete cart by ID
 router.delete("/:id", async (req, res) => {
   try {
     const deleted = await Cart.findByIdAndDelete(req.params.id);
@@ -60,7 +69,7 @@ router.delete("/:id", async (req, res) => {
     }
     res.json({ message: "Cart deleted successfully", cart: deleted });
   } catch (err) {
-    console.error("Error deleting cart:", err);
+    console.error("❌ Error deleting cart:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -69,12 +78,12 @@ router.delete("/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const carts = await Cart.find()
-      .populate("userId", "name") // ✅ This pulls the username from Users
-      .populate("items.productId"); // ✅ This pulls full product details
+      .populate("userId", "name")
+      .populate("items.productId");
 
     res.json(carts);
   } catch (err) {
-    console.error("Error fetching carts:", err);
+    console.error("❌ Error fetching carts:", err);
     res.status(500).json({ error: err.message });
   }
 });
