@@ -5,6 +5,7 @@ const router = express.Router();
 
 // 🛒 Create or update cart
 router.post("/", async (req, res) => {
+  console.log("Incoming cart payload:", req.body);
   const { userId, productId, quantity } = req.body;
 
   try {
