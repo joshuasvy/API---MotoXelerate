@@ -5,16 +5,18 @@ import { authToken } from "../middleware/authToken.js"; // ✅ Auth middleware
 
 const router = express.Router(); // ✅ This line was missing
 
+router.use((req, res, next) => {
+  console.log("📡 Appointment route hit:", req.method, req.originalUrl);
+  next();
+});
+
 router.post("/", authToken, async (req, res) => {
-  console.log("📥 Incoming body:", req.body);
   try {
     const { date, time, service_Type, service_Charge } = req.body;
-    const userId = req.user.id; // ✅ pulled from decoded token
+    const userId = req.user.id;
 
     if (!date || !time || !service_Type || !service_Charge) {
-      return res.status(400).json({
-        message: "Date, time, service type, and service charge are required.",
-      });
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
     const user = await Users.findById(userId);
@@ -24,7 +26,7 @@ router.post("/", authToken, async (req, res) => {
       userId,
       customer_Name: user.name,
       service_Type,
-      mechanic: "", // left blank for admin to assign later
+      mechanic: "",
       date: new Date(date),
       time,
       service_Charge,
@@ -32,30 +34,35 @@ router.post("/", authToken, async (req, res) => {
     });
 
     await newAppointment.save();
-
-    res.status(201).json({
-      message: "Appointment booked!",
-      appointment: newAppointment,
-    });
+    res
+      .status(201)
+      .json({ message: "Appointment booked!", appointment: newAppointment });
   } catch (err) {
-    console.error("❌ Booking error:", err);
+    console.error("❌ Booking error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ✅ Public GET route for admin dashboard
-router.get("/", async (req, res) => {
-  console.log("📥 GET /api/appointment hit");
-  try {
-    const appointments = await Appointments.find().sort({ date: 1 });
-    res.status(200).json({
-      message: "Route is working!",
-      appointments,
-    });
-  } catch (err) {
-    console.error("❌ Fetch error:", err);
-    res.status(500).json({ error: err.message });
-  }
+// router.get("/", async (req, res) => {
+//   console.log("📥 GET /api/appointment hit");
+//   try {
+//     const appointments = await Appointments.find().sort({ date: 1 });
+//     res.status(200).json({
+//       message: "Route is working!",
+//       appointments,
+//     });
+//   } catch (err) {
+//     console.error("❌ Fetch error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
+
+router.get("/user", authToken, async (req, res) => {
+  console.log("📥 GET /api/appointment/user hit");
+  const userId = req.user.id;
+  const appointments = await Appointments.find({ userId }).sort({ date: -1 });
+  res.status(200).json(appointments);
 });
 
 router.put("/:id", authToken, async (req, res) => {
