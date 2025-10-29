@@ -67,6 +67,33 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+router.put("/:id/remove", async (req, res) => {
+  const { productId } = req.body;
+
+  try {
+    const cart = await Cart.findById(req.params.id);
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    // Remove the item with matching productId
+    cart.items = cart.items.filter(
+      (item) => item.productId.toString() !== productId
+    );
+
+    await cart.save();
+
+    const updated = await Cart.findById(req.params.id)
+      .populate("userId", "name")
+      .populate("items.productId");
+
+    res.json(updated);
+  } catch (err) {
+    console.error("❌ Error removing item from cart:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 🗑 Delete entire cart by ID
 router.delete("/:id", async (req, res) => {
   try {
