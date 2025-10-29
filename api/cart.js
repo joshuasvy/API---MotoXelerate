@@ -32,10 +32,10 @@ router.post("/", async (req, res) => {
     }
 
     const saved = await cart.save();
-    const populated = await Cart.findById(saved._id).populate(
-      "items.productId"
-    );
-    res.status(201).json(populated); // ✅ return full cart to frontend
+    const populated = await Cart.findById(saved._id)
+      .populate("items.productId")
+      .exec(); // ✅ add .exec()
+    res.status(201).json(populated);
   } catch (err) {
     console.error("❌ Error creating/updating cart:", err);
     res.status(500).json({ error: err.message });
