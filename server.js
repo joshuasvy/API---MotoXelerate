@@ -6,6 +6,7 @@ import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
 import adminRoutes from "./api/admin.js";
 import productRoutes from "./api/product.js";
+import cartRoutes from "./api/cart.js";
 import xenditGcashRoutes from "./api/xenditGcash.js";
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
 app.use("/api/product", productRoutes);
+app.use("/api/cart", cartRoutes);
 app.use("/api/gcash", xenditGcashRoutes);
 // 404 handler
 app.use((req, res) => {
