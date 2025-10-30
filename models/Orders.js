@@ -26,6 +26,7 @@ const orderSchema = new mongoose.Schema(
     items: [orderItemSchema],
     total: { type: String, required: true },
     payment: { type: String, default: "Pending" },
+    status: { type: String, default: "For Approval" },
     orderDate: { type: Date, default: Date.now },
   },
   { timestamps: true }
