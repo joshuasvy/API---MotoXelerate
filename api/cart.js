@@ -110,17 +110,12 @@ router.delete("/:id", async (req, res) => {
 });
 
 // 📦 Get all carts
-router.get("/", async (req, res) => {
+router.get("/:userId", async (req, res) => {
   try {
-    const carts = await Cart.find()
-      .populate({
-        path: "userId",
-        select: "name", // ✅ Only return user's name
-      })
-      .populate({
-        path: "items.productId",
-        select: "name price specification image", // ✅ Only return needed product fields
-      });
+    const carts = await Cart.find({ userId: req.params.userId }).populate({
+      path: "items.productId",
+      select: "product_Name product_Price product_Specification image",
+    });
 
     res.status(200).json(carts);
   } catch (err) {
