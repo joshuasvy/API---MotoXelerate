@@ -28,7 +28,7 @@ router.post("/", async (req, res) => {
     const orderItems = [];
 
     for (const item of selectedItems) {
-      const product = await Product.findById(item._id);
+      const product = await Product.findById(item.productId); // ✅ not item._id
       if (!product) {
         return res
           .status(404)
@@ -40,9 +40,13 @@ router.post("/", async (req, res) => {
         product_Name: product.product_Name,
         product_Price: product.product_Price,
         quantity: item.quantity,
-        image: product.image,
+        image:
+          typeof product.image === "string"
+            ? product.image
+            : product.image?.uri || "", // ✅ fallback if it's an object
+
         category: product.category,
-        status: "Processing", // ✅ or whatever your default is
+        status: "Processing",
       });
     }
 
