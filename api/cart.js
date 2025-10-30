@@ -68,6 +68,7 @@ router.put("/:id", async (req, res) => {
 });
 
 router.put("/:id/remove", async (req, res) => {
+  console.log("🛠️ /:id/remove route hit:", req.params.id, req.body.productId);
   const { productId } = req.body;
 
   try {
@@ -112,10 +113,16 @@ router.delete("/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const carts = await Cart.find()
-      .populate("userId", "name")
-      .populate("items.productId");
+      .populate({
+        path: "userId",
+        select: "name", // ✅ Only return user's name
+      })
+      .populate({
+        path: "items.productId",
+        select: "name price specification image", // ✅ Only return needed product fields
+      });
 
-    res.json(carts);
+    res.status(200).json(carts);
   } catch (err) {
     console.error("❌ Error fetching carts:", err);
     res.status(500).json({ error: err.message });
