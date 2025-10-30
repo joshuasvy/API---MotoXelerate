@@ -94,6 +94,19 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const orders = await Orders.find({ userId }).sort({ createdAt: -1 });
+    res.status(200).json(orders);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch user orders", error: err.message });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
