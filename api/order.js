@@ -42,6 +42,7 @@ router.post("/", async (req, res) => {
         quantity: item.quantity,
         image: product.image,
         category: product.category,
+        status: "Processing", // ✅ or whatever your default is
       });
     }
 
