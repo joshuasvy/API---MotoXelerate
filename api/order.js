@@ -7,6 +7,7 @@ import Users from "../models/Users.js";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
+  console.log("🧪 Incoming payload:", req.body);
   const { userId, selectedItems, total, payment } = req.body;
 
   if (
@@ -43,6 +44,14 @@ router.post("/", async (req, res) => {
         category: product.category,
       });
     }
+
+    console.log("🧾 Final order:", {
+      userId,
+      customerName: user.name,
+      items: orderItems,
+      total,
+      payment,
+    });
 
     const newOrder = new Orders({
       userId,
