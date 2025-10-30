@@ -27,10 +27,12 @@ router.post("/", async (req, res) => {
       );
 
       if (!alreadyInCart) {
-        cart.items.push({ productId });
-        console.log("➕ Added new item to cart");
+        cart.items.push({ productId, quantity: 1 });
       } else {
-        console.log("🔁 Item already in cart, no action taken");
+        const item = cart.items.find(
+          (item) => item.productId.toString() === productId
+        );
+        item.quantity += 1;
       }
     }
 
@@ -112,12 +114,16 @@ router.delete("/:id", async (req, res) => {
 // 📦 Get all carts
 router.get("/:userId", async (req, res) => {
   try {
-    const carts = await Cart.find({ userId: req.params.userId }).populate({
+    const cart = await Cart.findOne({ userId: req.params.userId }).populate({
       path: "items.productId",
       select: "product_Name product_Price product_Specification image",
     });
 
-    res.status(200).json(carts);
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    res.status(200).json(cart);
   } catch (err) {
     console.error("❌ Error fetching carts:", err);
     res.status(500).json({ error: err.message });

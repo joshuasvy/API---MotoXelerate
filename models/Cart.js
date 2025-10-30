@@ -3,12 +3,16 @@ import mongoose from "mongoose";
 const cartItemSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product", // ✅ links to your Product model
+    ref: "Product",
     required: true,
+  },
+  quantity: {
+    type: Number,
+    default: 1,
   },
   selected: {
     type: Boolean,
-    default: false, // ✅ useful for multi-select checkout
+    default: false,
   },
 });
 
