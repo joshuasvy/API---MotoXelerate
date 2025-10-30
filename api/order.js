@@ -101,21 +101,27 @@ router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { items } = req.body;
 
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: "Invalid items payload" });
+  }
+
   try {
     const order = await Orders.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // ✅ Update each item's status
-    order.items.forEach((item, index) => {
-      if (items[index]) {
-        item.status = items[index].status;
+    order.items.forEach((item) => {
+      const updatedItem = items.find(
+        (i) => i.productId.toString() === item.productId.toString()
+      );
+      if (updatedItem) {
+        item.status = updatedItem.status;
       }
     });
 
     const updated = await order.save();
     res.status(200).json(updated);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
