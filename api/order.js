@@ -1,0 +1,76 @@
+import express from "express";
+import Orders from "../models/Orders.js";
+import Cart from "../models/Cart.js";
+import Product from "../models/Product.js";
+import Users from "../models/Users.js";
+
+const router = express.Router();
+
+router.post("/", async (req, res) => {
+  const { userId, selectedItems, total, payment } = req.body;
+
+  if (
+    !userId ||
+    !selectedItems ||
+    !Array.isArray(selectedItems) ||
+    selectedItems.length === 0
+  ) {
+    return res.status(400).json({ error: "Missing or invalid checkout data." });
+  }
+
+  try {
+    const user = await Users.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const orderItems = [];
+
+    for (const item of selectedItems) {
+      const product = await Product.findById(item._id);
+      if (!product) {
+        return res
+          .status(404)
+          .json({ error: `Product not found: ${item._id}` });
+      }
+
+      orderItems.push({
+        productId: product._id,
+        product_Name: product.product_Name,
+        product_Price: product.product_Price,
+        quantity: item.quantity,
+        image: product.image,
+        category: product.category,
+      });
+    }
+
+    const newOrder = new Orders({
+      userId,
+      customerName: user.name,
+      items: orderItems,
+      total,
+      payment,
+      status: "Processing",
+    });
+
+    const savedOrder = await newOrder.save();
+
+    await Cart.findOneAndUpdate(
+      { userId },
+      {
+        $pull: {
+          items: {
+            productId: { $in: selectedItems.map((item) => item._id) },
+          },
+        },
+      }
+    );
+
+    res.status(201).json(savedOrder);
+  } catch (err) {
+    console.error("❌ Error during checkout:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
