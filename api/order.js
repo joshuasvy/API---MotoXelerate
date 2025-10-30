@@ -32,7 +32,7 @@ router.post("/", async (req, res) => {
       if (!product) {
         return res
           .status(404)
-          .json({ error: `Product not found: ${item._id}` });
+          .json({ error: `Product not found: ${item.productId}` }); // ✅ accurate
       }
 
       orderItems.push({
@@ -74,7 +74,7 @@ router.post("/", async (req, res) => {
       {
         $pull: {
           items: {
-            productId: { $in: selectedItems.map((item) => item._id) },
+            productId: { $in: selectedItems.map((item) => item.productId) },
           },
         },
       }
