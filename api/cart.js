@@ -116,7 +116,7 @@ router.get("/:userId", async (req, res) => {
   try {
     const cart = await Cart.findOne({ userId: req.params.userId }).populate({
       path: "items.productId",
-      select: "product_Name product_Price product_Specification image",
+      select: "product_Name product_Price product_Specification image stock", // ✅ include stock
     });
 
     if (!cart) {
