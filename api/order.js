@@ -92,21 +92,19 @@ router.get("/", async (req, res) => {
 });
 
 // Express route
-router.put("/api/order/:id", async (req, res) => {
+// routes/order.js or similar
+router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
   try {
-    const updatedOrder = await Orders.findByIdAndUpdate(
+    const updated = await Orders.findByIdAndUpdate(
       id,
       { status },
       { new: true }
     );
-
-    if (!updatedOrder)
-      return res.status(404).json({ message: "Order not found" });
-
-    res.status(200).json(updatedOrder);
+    if (!updated) return res.status(404).json({ message: "Order not found" });
+    res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
