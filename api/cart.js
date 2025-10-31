@@ -1,47 +1,99 @@
 import express from "express";
 import Cart from "../models/Cart.js";
+import Product from "../models/Product.js";
 
 const router = express.Router();
 
-// 🛒 Create or update cart (no quantity)
+// 🛒 Create or update cart (with full product details)
 router.post("/", async (req, res) => {
   console.log("📥 Incoming cart payload:", req.body);
   const { userId, productId } = req.body;
 
   if (!userId || !productId) {
+    console.log("⚠️ Missing userId or productId");
     return res.status(400).json({ error: "Missing userId or productId." });
   }
 
   try {
+    const product = await Product.findById(productId);
+    console.log("🧪 Product fetched:", product);
+
+    if (!product) {
+      console.log("❌ Product not found");
+      return res.status(404).json({ error: "Product not found." });
+    }
+
+    // ✅ Defensive check for required fields
+    const requiredFields = ["productName", "price", "image", "category"];
+    for (const field of requiredFields) {
+      if (product[field] === undefined || product[field] === null) {
+        console.log(`❌ Missing field in product: ${field}`);
+        return res.status(400).json({
+          error: `Product is missing required field: ${field}`,
+        });
+      }
+    }
+
     let cart = await Cart.findOne({ userId });
+    console.log("🧪 Existing cart:", cart);
+
+    const newItem = {
+      productId: product._id,
+      productName: product.productName,
+      image: product.image,
+      price: product.price,
+      quantity: 1,
+      category: product.category,
+      specification: product.specification || "",
+      selected: false,
+    };
+    console.log("🧪 Item to push:", newItem);
 
     if (!cart) {
       cart = new Cart({
         userId,
-        items: [{ productId }],
+        items: [newItem],
       });
       console.log("🆕 New cart created");
     } else {
-      const alreadyInCart = cart.items.some(
-        (item) => item.productId.toString() === productId
-      );
+      // 🧹 Clean up legacy items missing required fields
+      cart.items = cart.items.filter((item) => {
+        const isValid =
+          item.productName &&
+          item.price !== undefined &&
+          item.image &&
+          item.category;
+        if (!isValid) {
+          console.log("🧹 Removing invalid item:", item);
+        }
+        return isValid;
+      });
 
-      if (!alreadyInCart) {
-        cart.items.push({ productId, quantity: 1 });
+      const existingItem = cart.items.find(
+        (item) => item.productId.toString() === product._id.toString()
+      );
+      console.log("🧪 Existing item match:", existingItem);
+
+      if (existingItem) {
+        existingItem.quantity += 1;
+        console.log("🔁 Incremented quantity for existing item");
       } else {
-        const item = cart.items.find(
-          (item) => item.productId.toString() === productId
-        );
-        item.quantity += 1;
+        cart.items.push({ ...newItem });
+        console.log("➕ Pushed new item to cart");
       }
     }
 
+    console.log(
+      "🧪 Final cart before save:",
+      JSON.stringify(cart.items, null, 2)
+    );
+
     const saved = await cart.save();
     const populated = await Cart.findById(saved._id)
-      .populate("userId", "name")
-      .populate("items.productId")
+      .populate("userId", "firstName lastName")
       .exec();
 
+    console.log("✅ Cart saved and populated:", populated);
     res.status(201).json(populated);
   } catch (err) {
     console.error("❌ Error creating/updating cart:", err);
@@ -49,14 +101,12 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✏️ Update cart by ID (e.g. toggle selected)
+// ✏️ Update cart by ID (e.g. toggle selected, change quantity)
 router.put("/:id", async (req, res) => {
   try {
     const updated = await Cart.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    })
-      .populate("userId", "name")
-      .populate("items.productId");
+    }).populate("userId", "firstName lastName");
 
     if (!updated) {
       return res.status(404).json({ message: "Cart not found" });
@@ -69,6 +119,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// 🧹 Remove item from cart
 router.put("/:id/remove", async (req, res) => {
   console.log("🛠️ /:id/remove route hit:", req.params.id, req.body.productId);
   const { productId } = req.body;
@@ -79,16 +130,16 @@ router.put("/:id/remove", async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Remove the item with matching productId
     cart.items = cart.items.filter(
       (item) => item.productId.toString() !== productId
     );
 
     await cart.save();
 
-    const updated = await Cart.findById(req.params.id)
-      .populate("userId", "name")
-      .populate("items.productId");
+    const updated = await Cart.findById(req.params.id).populate(
+      "userId",
+      "firstName lastName"
+    );
 
     res.json(updated);
   } catch (err) {
@@ -111,12 +162,12 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// 📦 Get all carts
+// 📦 Get cart by userId
 router.get("/:userId", async (req, res) => {
   try {
     const cart = await Cart.findOne({ userId: req.params.userId }).populate({
-      path: "items.productId",
-      select: "product_Name product_Price product_Specification image stock", // ✅ include stock
+      path: "userId",
+      select: "firstName lastName",
     });
 
     if (!cart) {
@@ -125,7 +176,7 @@ router.get("/:userId", async (req, res) => {
 
     res.status(200).json(cart);
   } catch (err) {
-    console.error("❌ Error fetching carts:", err);
+    console.error("❌ Error fetching cart:", err);
     res.status(500).json({ error: err.message });
   }
 });

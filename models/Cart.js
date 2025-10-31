@@ -6,27 +6,26 @@ const cartItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  quantity: {
-    type: Number,
-    default: 1,
-  },
-  selected: {
-    type: Boolean,
-    default: false,
-  },
+  productName: { type: String, required: true },
+  image: { type: String, required: true },
+  price: { type: Number, required: true },
+  quantity: { type: Number, default: 1 },
+  category: { type: String, required: true },
+  specification: { type: String },
+  selected: { type: Boolean, default: false },
 });
 
 const cartSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Users", // ✅ links to your Users model
+      ref: "Users",
       required: true,
-      unique: true, // ✅ ensures one cart per user
+      unique: true,
     },
     items: {
       type: [cartItemSchema],
-      default: [], // ✅ ensures empty array on creation
+      default: [],
     },
   },
   { timestamps: true }

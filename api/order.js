@@ -6,9 +6,17 @@ import Users from "../models/Users.js";
 
 const router = express.Router();
 
+// 🛒 Create a new order
 router.post("/", async (req, res) => {
   console.log("🧪 Incoming payload:", req.body);
-  const { userId, selectedItems, total, payment } = req.body;
+  const {
+    userId,
+    selectedItems,
+    totalOrder,
+    paymentMethod,
+    deliveryAddress,
+    notes,
+  } = req.body;
 
   if (
     !userId ||
@@ -16,57 +24,82 @@ router.post("/", async (req, res) => {
     !Array.isArray(selectedItems) ||
     selectedItems.length === 0
   ) {
+    console.log("⚠️ Missing or invalid checkout data");
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
 
   try {
     const user = await Users.findById(userId);
     if (!user) {
+      console.log("❌ User not found:", userId);
       return res.status(404).json({ error: "User not found." });
     }
 
     const orderItems = [];
 
     for (const item of selectedItems) {
-      const product = await Product.findById(item.productId); // ✅ not item._id
+      const product = await Product.findById(item.productId);
       if (!product) {
+        console.log("❌ Product not found:", item.productId);
         return res
           .status(404)
-          .json({ error: `Product not found: ${item.productId}` }); // ✅ accurate
+          .json({ error: `Product not found: ${item.productId}` });
+      }
+
+      // 🧹 Defensive check for required fields
+      const requiredFields = ["productName", "price", "image", "category"];
+      const missing = requiredFields.filter(
+        (field) => product[field] === undefined || product[field] === null
+      );
+      if (missing.length > 0) {
+        console.log(
+          `❌ Product missing fields: ${missing.join(", ")}`,
+          product
+        );
+        return res.status(400).json({
+          error: `Product ${
+            product._id
+          } is missing required fields: ${missing.join(", ")}`,
+        });
       }
 
       orderItems.push({
         productId: product._id,
-        product_Name: product.product_Name,
-        product_Price: product.product_Price,
+        productName: product.productName,
+        price: product.price,
         quantity: item.quantity,
         image: product.image,
         category: product.category,
-        product_Specification: product.product_Specification, // ✅ add this
+        specification: product.specification,
         status: "Processing",
       });
     }
 
-    console.log("🧾 Final order:", {
-      userId,
-      customerName: user.name,
-      items: orderItems,
-      total,
-      payment,
-    });
+    if (orderItems.length === 0) {
+      console.log("❌ No valid items to place in order");
+      return res
+        .status(400)
+        .json({ error: "No valid items to place in order." });
+    }
 
     const newOrder = new Orders({
       userId,
-      customerName: user.name,
+      customerName: `${user.firstName} ${user.lastName}`,
       items: orderItems,
-      total,
-      payment,
-      status: "Processing",
+      totalOrder,
+      paymentMethod,
+      orderRequest: "For Approval",
+      deliveryAddress,
+      notes,
     });
 
-    const savedOrder = await newOrder.save();
+    console.log("📦 Order to save:", JSON.stringify(newOrder, null, 2));
 
-    await Cart.findOneAndUpdate(
+    const savedOrder = await newOrder.save();
+    console.log("✅ Order saved:", savedOrder._id);
+
+    // 🧹 Remove only the ordered items from the cart
+    const cartUpdate = await Cart.findOneAndUpdate(
       { userId },
       {
         $pull: {
@@ -74,8 +107,11 @@ router.post("/", async (req, res) => {
             productId: { $in: selectedItems.map((item) => item.productId) },
           },
         },
-      }
+      },
+      { new: true }
     );
+
+    console.log("🧹 Cart updated after checkout:", cartUpdate);
 
     res.status(201).json(savedOrder);
   } catch (err) {
@@ -84,6 +120,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+// 📦 Get all orders
 router.get("/", async (req, res) => {
   try {
     const orders = await Orders.find().sort({ createdAt: -1 });
@@ -95,6 +132,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// 📦 Get orders by user
 router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
@@ -108,6 +146,7 @@ router.get("/user/:userId", async (req, res) => {
   }
 });
 
+// 📦 Get order by ID
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -123,6 +162,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// 🔄 Update item status in an order
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { items } = req.body;
