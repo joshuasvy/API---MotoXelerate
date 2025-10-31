@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import Users from "../models/Users.js";
-import Admin from "../models/Admin.js"; // ✅ Import your admin model
+import Admin from "../models/Admin.js";
 
 export const authToken = async (req, res, next) => {
   try {
@@ -20,10 +20,16 @@ export const authToken = async (req, res, next) => {
 
     if (!account) return res.status(404).json({ message: "Account not found" });
 
+    // ✅ Use full name if available
+    const fullName =
+      account.firstName && account.lastName
+        ? `${account.firstName} ${account.lastName}`
+        : account.name || "Unknown";
+
     req.user = {
       id: account._id,
       role: account.role,
-      name: account.name,
+      name: fullName,
     };
 
     next();
