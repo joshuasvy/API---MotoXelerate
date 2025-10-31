@@ -182,4 +182,38 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+router.delete("/cleanup-legacy-items", async (req, res) => {
+  try {
+    const carts = await Cart.find({});
+    let totalRemoved = 0;
+
+    for (const cart of carts) {
+      const originalCount = cart.items.length;
+
+      cart.items = cart.items.filter((item) => {
+        const isValid =
+          item.product &&
+          item.productName &&
+          item.price !== undefined &&
+          item.image &&
+          item.category;
+        if (!isValid) {
+          console.log("🧹 Removing invalid item from cart:", item);
+        }
+        return isValid;
+      });
+
+      if (cart.items.length < originalCount) {
+        await cart.save();
+        totalRemoved += originalCount - cart.items.length;
+      }
+    }
+
+    res.json({ message: "Legacy cart items cleaned up", totalRemoved });
+  } catch (err) {
+    console.error("❌ Error during cart cleanup:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
