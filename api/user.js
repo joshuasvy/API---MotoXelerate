@@ -17,8 +17,11 @@ router.get("/me", authToken, async (req, res) => {
 
     res.status(200).json({
       id: user._id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
+      contact: user.contact,
+      address: user.address,
       role: user.role,
     });
   } catch (err) {
@@ -30,13 +33,28 @@ router.get("/me", authToken, async (req, res) => {
 // Register Crud
 router.post("/register", async (req, res) => {
   try {
-    const { name, contact, email, password } = req.body;
+    const { firstName, lastName, address, contact, email, password } = req.body;
 
-    if (!name || !contact || !email || !password) {
-      return res.status(400).json({ message: "What is the problem." });
+    if (
+      !firstName ||
+      !lastName ||
+      !address ||
+      !contact ||
+      !email ||
+      !password
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
     }
 
-    const newUser = new Users({ name, contact, email, password });
+    const newUser = new Users({
+      firstName,
+      lastName,
+      address,
+      contact,
+      email,
+      password,
+    });
+
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
