@@ -9,7 +9,7 @@ const usersSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    match: /^\+63\s\d{3}\s\d{3}\s\d{4}$/, // optional: enforce format
+    match: /^\+63\s\d{3}\s\d{3}\s\d{4}$/,
   },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },

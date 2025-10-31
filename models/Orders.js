@@ -6,14 +6,16 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  product_Name: String,
-  image: String,
-  quantity: Number,
-  product_Price: String,
-  product_Specification: String,
+  productName: { type: String, required: true },
+  image: { type: String, required: true },
+  quantity: { type: Number, required: true },
+  price: { type: Number, required: true },
+  specification: { type: String },
+  category: { type: String, required: true },
   status: {
     type: String,
-    default: "Processing", // ✅ or "For approval" if that's your initial state
+    enum: ["Processing", "Shipped", "Delivered", "Cancelled"],
+    default: "Processing",
   },
 });
 
@@ -24,12 +26,28 @@ const orderSchema = new mongoose.Schema(
       ref: "Users",
       required: true,
     },
-    customerName: { type: String, required: true }, // ✅ new field
-    items: [orderItemSchema],
-    total: { type: String, required: true },
-    payment: { type: String, default: "Pending" },
-    status: { type: String, default: "For Approval" },
+    customerName: { type: String, required: true },
+    items: {
+      type: [orderItemSchema],
+      validate: [
+        (val) => val.length > 0,
+        "Order must contain at least one item",
+      ],
+    },
+    totalOrder: { type: Number, required: true },
+    paymentMethod: {
+      type: String,
+      enum: ["Gcash", "Cash on Delivery", "Pick up"],
+      default: "Gcash",
+    },
+    orderRequest: {
+      type: String,
+      enum: ["For Approval", "Approved", "Rejected"],
+      default: "For Approval",
+    },
     orderDate: { type: Date, default: Date.now },
+    deliveryAddress: { type: String },
+    notes: { type: String },
   },
   { timestamps: true }
 );
