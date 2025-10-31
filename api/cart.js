@@ -150,6 +150,53 @@ router.put("/:id/remove", async (req, res) => {
   }
 });
 
+router.delete("/admin/cleanup-legacy-items", async (req, res) => {
+  console.log("🧪 Cleanup route triggered");
+  console.log("✅ Cart routes mounted at /api/cart");
+
+  try {
+    const carts = await Cart.find({});
+    let totalRemoved = 0;
+
+    for (const cart of carts) {
+      const originalCount = cart.items.length;
+
+      cart.items = cart.items.filter((item) => {
+        const isValid =
+          item.product &&
+          item.productName &&
+          item.price !== undefined &&
+          item.image &&
+          item.category;
+
+        if (!isValid) {
+          console.log("🧹 Removing invalid item from cart:", {
+            cartId: cart._id,
+            item,
+          });
+        }
+
+        return isValid;
+      });
+
+      if (cart.items.length < originalCount) {
+        await cart.save();
+        totalRemoved += originalCount - cart.items.length;
+        console.log(
+          `🧹 Cart ${cart._id} cleaned: ${
+            originalCount - cart.items.length
+          } items removed`
+        );
+      }
+    }
+
+    res.json({ message: "Legacy cart items cleaned up", totalRemoved });
+  } catch (err) {
+    console.error("❌ Error during cart cleanup:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 🗑 Delete entire cart by ID
 router.delete("/:id", async (req, res) => {
   try {
@@ -178,40 +225,6 @@ router.get("/:userId", async (req, res) => {
     res.status(200).json(cart);
   } catch (err) {
     console.error("❌ Error fetching cart:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.delete("/cleanup-legacy-items", async (req, res) => {
-  try {
-    const carts = await Cart.find({});
-    let totalRemoved = 0;
-
-    for (const cart of carts) {
-      const originalCount = cart.items.length;
-
-      cart.items = cart.items.filter((item) => {
-        const isValid =
-          item.product &&
-          item.productName &&
-          item.price !== undefined &&
-          item.image &&
-          item.category;
-        if (!isValid) {
-          console.log("🧹 Removing invalid item from cart:", item);
-        }
-        return isValid;
-      });
-
-      if (cart.items.length < originalCount) {
-        await cart.save();
-        totalRemoved += originalCount - cart.items.length;
-      }
-    }
-
-    res.json({ message: "Legacy cart items cleaned up", totalRemoved });
-  } catch (err) {
-    console.error("❌ Error during cart cleanup:", err);
     res.status(500).json({ error: err.message });
   }
 });
