@@ -7,9 +7,10 @@ const orderItemSchema = new mongoose.Schema({
     required: true,
   },
   product_Name: String,
+  image: String,
   quantity: Number,
   product_Price: String,
-  image: String,
+  product_Specification: String,
   status: {
     type: String,
     default: "Processing", // ✅ or "For approval" if that's your initial state
