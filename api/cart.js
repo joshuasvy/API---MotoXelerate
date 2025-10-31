@@ -167,7 +167,7 @@ router.delete("/:id", async (req, res) => {
 // 📦 Get cart by userId
 router.get("/:userId", async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId })
+    const cart = await Cart.findOne({ userId: req.params.userId })
       .populate("items.product")
       .populate("userId", "firstName lastName");
 
