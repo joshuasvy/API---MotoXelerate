@@ -40,12 +40,9 @@ router.post("/", async (req, res) => {
         product_Name: product.product_Name,
         product_Price: product.product_Price,
         quantity: item.quantity,
-        image:
-          typeof product.image === "string"
-            ? product.image
-            : product.image?.uri || "", // ✅ fallback if it's an object
-
+        image: product.image,
         category: product.category,
+        product_Specification: product.product_Specification, // ✅ add this
         status: "Processing",
       });
     }
