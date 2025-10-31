@@ -7,18 +7,18 @@ const router = express.Router();
 // 🛒 Create or update cart (with full product details)
 router.post("/", async (req, res) => {
   console.log("📥 Incoming cart payload:", req.body);
-  const { userId, productId } = req.body;
+  const { userId, product } = req.body;
 
-  if (!userId || !productId) {
-    console.log("⚠️ Missing userId or productId");
-    return res.status(400).json({ error: "Missing userId or productId." });
+  if (!userId || !product) {
+    console.log("⚠️ Missing userId or product");
+    return res.status(400).json({ error: "Missing userId or product." });
   }
 
   try {
-    const product = await Product.findById(productId);
-    console.log("🧪 Product fetched:", product);
+    const productDoc = await Product.findById(product);
+    console.log("🧪 Product fetched:", productDoc);
 
-    if (!product) {
+    if (!productDoc) {
       console.log("❌ Product not found");
       return res.status(404).json({ error: "Product not found." });
     }
@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
     // ✅ Defensive check for required fields
     const requiredFields = ["productName", "price", "image", "category"];
     for (const field of requiredFields) {
-      if (product[field] === undefined || product[field] === null) {
+      if (productDoc[field] === undefined || productDoc[field] === null) {
         console.log(`❌ Missing field in product: ${field}`);
         return res.status(400).json({
           error: `Product is missing required field: ${field}`,
@@ -38,15 +38,16 @@ router.post("/", async (req, res) => {
     console.log("🧪 Existing cart:", cart);
 
     const newItem = {
-      productId: product._id,
-      productName: product.productName,
-      image: product.image,
-      price: product.price,
+      product: productDoc._id,
+      productName: productDoc.productName,
+      image: productDoc.image,
+      price: productDoc.price,
       quantity: 1,
-      category: product.category,
-      specification: product.specification || "",
+      category: productDoc.category,
+      specification: productDoc.specification || "",
       selected: false,
     };
+
     console.log("🧪 Item to push:", newItem);
 
     if (!cart) {
@@ -70,8 +71,9 @@ router.post("/", async (req, res) => {
       });
 
       const existingItem = cart.items.find(
-        (item) => item.productId.toString() === product._id.toString()
+        (item) => item.product.toString() === productDoc._id.toString()
       );
+
       console.log("🧪 Existing item match:", existingItem);
 
       if (existingItem) {
@@ -131,7 +133,7 @@ router.put("/:id/remove", async (req, res) => {
     }
 
     cart.items = cart.items.filter(
-      (item) => item.productId.toString() !== productId
+      (item) => item.product.toString() !== productId
     );
 
     await cart.save();
@@ -165,10 +167,9 @@ router.delete("/:id", async (req, res) => {
 // 📦 Get cart by userId
 router.get("/:userId", async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.params.userId }).populate({
-      path: "userId",
-      select: "firstName lastName",
-    });
+    const cart = await Cart.findOne({ userId })
+      .populate("items.product")
+      .populate("userId", "firstName lastName");
 
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });

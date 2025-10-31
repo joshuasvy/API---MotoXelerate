@@ -38,7 +38,7 @@ router.post("/", async (req, res) => {
     const orderItems = [];
 
     for (const item of selectedItems) {
-      const product = await Product.findById(item.productId);
+      const product = await Product.findById(item.product);
       if (!product) {
         console.log("❌ Product not found:", item.productId);
         return res
@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
       }
 
       orderItems.push({
-        productId: product._id,
+        product: product._id,
         productName: product.productName,
         price: product.price,
         quantity: item.quantity,
@@ -104,7 +104,7 @@ router.post("/", async (req, res) => {
       {
         $pull: {
           items: {
-            productId: { $in: selectedItems.map((item) => item.productId) },
+            product: { $in: selectedItems.map((item) => item.product) },
           },
         },
       },
