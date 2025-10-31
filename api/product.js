@@ -10,10 +10,7 @@ router.post("/", async (req, res) => {
     req.body;
 
   try {
-    const productId = new mongoose.Types.ObjectId().toString();
-
     const newProduct = new Product({
-      productId,
       productName,
       image,
       price,
@@ -55,6 +52,18 @@ router.get("/", async (req, res) => {
     res.json(products);
   } catch (err) {
     console.error("❌ Error fetching products:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🧹 TEMP: Remove legacy product_Id field from all products
+router.delete("/cleanup-legacy-productId", async (req, res) => {
+  try {
+    const result = await Product.updateMany({}, { $unset: { product_Id: "" } });
+    console.log("🧹 Cleanup result:", result);
+    res.json({ message: "Legacy product_Id fields removed", result });
+  } catch (err) {
+    console.error("❌ Cleanup error:", err);
     res.status(500).json({ error: err.message });
   }
 });
