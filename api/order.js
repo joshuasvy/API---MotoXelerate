@@ -143,8 +143,11 @@ router.get("/user/:userId", async (req, res) => {
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod,
       items: order.items.map((item) => ({
+        productName: item.product?.productName || "Unnamed Product",
+        specification: item.product?.specification || "No specification",
+        price: item.product?.price || 0,
+        image: item.product?.image || "",
         quantity: item.quantity,
-        category: item.product?.category || "Unknown",
         status: item.status,
       })),
     }));
