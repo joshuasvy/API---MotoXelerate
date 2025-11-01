@@ -10,7 +10,7 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post("/", authToken, async (req, res) => {
+rrouter.post("/", authToken, async (req, res) => {
   try {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
@@ -22,9 +22,11 @@ router.post("/", authToken, async (req, res) => {
     const user = await Users.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found." });
 
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+
     const newAppointment = new Appointments({
       userId,
-      customer_Name: user.name,
+      customer_Name: fullName,
       service_Type,
       mechanic: "",
       date: new Date(date),
