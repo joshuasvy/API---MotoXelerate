@@ -40,7 +40,7 @@ router.post("/", async (req, res) => {
     for (const item of selectedItems) {
       const product = await Product.findById(item.product);
       if (!product) {
-        console.log("❌ Product not found:", item.productId);
+        console.log("❌ Product not found:", item.product);
         return res
           .status(404)
           .json({ error: `Product not found: ${item.productId}` });
@@ -65,12 +65,7 @@ router.post("/", async (req, res) => {
 
       orderItems.push({
         product: product._id,
-        productName: product.productName,
-        price: product.price,
         quantity: item.quantity,
-        image: product.image,
-        category: product.category,
-        specification: product.specification,
         status: "Processing",
       });
     }
@@ -137,7 +132,10 @@ router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const orders = await Orders.find({ userId }).sort({ createdAt: -1 });
+    const orders = await Orders.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate("items.product"); // ✅ populate product details
+
     res.status(200).json(orders);
   } catch (err) {
     res
