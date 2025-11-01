@@ -93,4 +93,31 @@ router.get("/all", async (req, res) => {
   }
 });
 
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: "Image URL is required" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { image },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    console.log("✅ Updated profile image for user:", updatedUser._id);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("❌ Error updating profile image:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default router;
