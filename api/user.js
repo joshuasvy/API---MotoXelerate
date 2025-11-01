@@ -1,4 +1,6 @@
 import express from "express";
+import multer from "multer";
+import path from "path";
 import Users from "../models/Users.js";
 import { authToken } from "../middleware/authToken.js";
 import bcrypt from "bcrypt";
@@ -10,6 +12,32 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// ✅ Serve uploaded images from /uploads
+router.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// ✅ Multer config for local image upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `user-${req.params.id}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png"];
+    allowed.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Only JPEG and PNG images are allowed"));
+  },
+});
+
+// ✅ GET /me
 router.get("/me", authToken, async (req, res) => {
   try {
     const user = await Users.findById(req.user.id);
@@ -23,6 +51,7 @@ router.get("/me", authToken, async (req, res) => {
       contact: user.contact,
       address: user.address,
       role: user.role,
+      image: user.image,
     });
   } catch (err) {
     console.error("❌ /me route error:", err);
@@ -30,7 +59,7 @@ router.get("/me", authToken, async (req, res) => {
   }
 });
 
-// Register Crud
+// ✅ POST /register
 router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
@@ -54,7 +83,6 @@ router.post("/register", async (req, res) => {
       email,
       password,
     });
-
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
@@ -63,7 +91,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login Crud
+// ✅ POST /login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -76,14 +104,13 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET);
-
     res.json({ message: "Login successful", token, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Fetching all users
+// ✅ GET /all
 router.get("/all", async (req, res) => {
   try {
     const users = await Users.find();
@@ -93,6 +120,7 @@ router.get("/all", async (req, res) => {
   }
 });
 
+// ✅ PUT /:id (update image via URL)
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -102,7 +130,7 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "Image URL is required" });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
+    const updatedUser = await Users.findByIdAndUpdate(
       id,
       { image },
       { new: true, runValidators: true }
@@ -116,6 +144,35 @@ router.put("/:id", async (req, res) => {
     res.status(200).json(updatedUser);
   } catch (error) {
     console.error("❌ Error updating profile image:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ✅ POST /:id/upload (upload image file)
+router.post("/:id/upload", upload.single("image"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file uploaded" });
+    }
+
+    const imagePath = `/uploads/${req.file.filename}`;
+
+    const updatedUser = await Users.findByIdAndUpdate(
+      id,
+      { image: imagePath },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    console.log("✅ Image uploaded for user:", updatedUser._id);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("❌ Upload error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
