@@ -134,9 +134,22 @@ router.get("/user/:userId", async (req, res) => {
   try {
     const orders = await Orders.find({ userId })
       .sort({ createdAt: -1 })
-      .populate("items.product"); // ✅ populate product details
+      .populate("items.product");
 
-    res.status(200).json(orders);
+    const formatted = orders.map((order) => ({
+      orderId: order._id,
+      customerName: order.customerName,
+      orderDate: order.createdAt,
+      totalOrder: order.totalOrder,
+      paymentMethod: order.paymentMethod,
+      items: order.items.map((item) => ({
+        quantity: item.quantity,
+        category: item.product?.category || "Unknown",
+        status: item.status,
+      })),
+    }));
+
+    res.status(200).json(formatted);
   } catch (err) {
     res
       .status(500)
