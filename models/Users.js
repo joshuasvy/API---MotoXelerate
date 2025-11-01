@@ -4,6 +4,11 @@ import bcrypt from "bcrypt";
 const usersSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
+  image: {
+    type: String,
+    default:
+      "https://res.cloudinary.com/dhh37ekzf/image/upload/v1761966774/Starter_pfp_ymrios.jpg",
+  },
   address: { type: String, required: true },
   contact: {
     type: String,
