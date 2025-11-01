@@ -37,8 +37,8 @@ router.post("/upload/:id", upload.single("image"), async (req, res) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: "e-commerce", // ✅ matches your preset folder
-            upload_preset: "MotoXelerate", // ✅ your preset name
+            folder: "user_profile", // ✅ optional folder
+            upload_preset: "MotoXelerate", // ✅ correct preset name
           },
           (error, result) => {
             if (result) {
@@ -73,6 +73,29 @@ router.post("/upload/:id", upload.single("image"), async (req, res) => {
   }
 });
 
+// ✅ Update user image via PUT
+router.put("/:id", authToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { image } = req.body;
+
+    const updatedUser = await Users.findByIdAndUpdate(
+      id,
+      { image },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    console.error("❌ PUT /user/:id error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ✅ GET /me
 router.get("/me", authToken, async (req, res) => {
   try {
@@ -87,7 +110,7 @@ router.get("/me", authToken, async (req, res) => {
       contact: user.contact,
       address: user.address,
       role: user.role,
-      image: user.image, // ✅ include image field
+      image: user.image || "", // ✅ fallback if image is missing
     });
   } catch (err) {
     console.error("❌ /me route error:", err);
@@ -111,19 +134,22 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "All fields are required." });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new Users({
       firstName,
       lastName,
       address,
       contact,
       email,
-      password,
+      password: hashedPassword,
     });
 
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
+    console.error("❌ Registration error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -144,6 +170,7 @@ router.post("/login", async (req, res) => {
 
     res.json({ message: "Login successful", token, user });
   } catch (err) {
+    console.error("❌ Login error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -154,6 +181,7 @@ router.get("/all", async (req, res) => {
     const users = await Users.find();
     res.json(users);
   } catch (err) {
+    console.error("❌ Fetch users error:", err);
     res.status(500).json({ error: err.message });
   }
 });
