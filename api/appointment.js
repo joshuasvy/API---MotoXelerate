@@ -10,7 +10,7 @@ router.use((req, res, next) => {
   next();
 });
 
-rrouter.post("/", authToken, async (req, res) => {
+router.post("/", authToken, async (req, res) => {
   try {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
