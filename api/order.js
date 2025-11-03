@@ -75,7 +75,7 @@ router.post("/", async (req, res) => {
       items: orderItems,
       totalOrder,
       paymentMethod,
-      orderRequest: "For approval",
+      orderRequest: "For Approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
     });
