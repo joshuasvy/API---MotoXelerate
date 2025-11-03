@@ -126,7 +126,12 @@ router.get("/user/:userId", async (req, res) => {
   try {
     const orders = await Order.find({ userId })
       .sort({ createdAt: -1 })
-      .populate("items.product");
+      .populate({
+        path: "items.product",
+        model: "Product",
+        select: "productName specification price image", // ✅ only fetch needed fields
+        strictPopulate: false, // ✅ prevent crash on missing refs
+      });
 
     const formattedOrders = orders.map((order) => ({
       orderId: order._id,
@@ -156,7 +161,7 @@ router.get("/user/:userId", async (req, res) => {
             status: item.status,
           };
         })
-        .filter(Boolean), // ✅ remove nulls
+        .filter(Boolean),
     }));
 
     res.status(200).json(formattedOrders);
