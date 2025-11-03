@@ -227,6 +227,9 @@ router.put("/:id", async (req, res) => {
     const order = await Order.findById(id).populate("items.product");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    console.log("🔄 Incoming update payload:", items);
+    console.log("📦 Existing order items:", order.items);
+
     order.items.forEach((item, index) => {
       const productId =
         typeof item.product === "object" && item.product?._id
