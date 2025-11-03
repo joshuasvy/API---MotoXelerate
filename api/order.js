@@ -224,23 +224,33 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).populate("items.product");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    order.items.forEach((item) => {
+    order.items.forEach((item, index) => {
+      const productId =
+        typeof item.product === "object" && item.product?._id
+          ? item.product._id.toString()
+          : item.product?.toString();
+
       const updatedItem = items.find(
-        (i) =>
-          i.productId.toString() === item.product.toString() ||
-          i.productId.toString() === item.productId?.toString()
+        (i) => i.productId.toString() === productId
       );
+
       if (updatedItem) {
         item.status = updatedItem.status;
+      } else {
+        console.warn(
+          `⚠️ No match for item[${index}] with productId:`,
+          productId
+        );
       }
     });
 
     const updated = await order.save();
     res.status(200).json(updated);
   } catch (err) {
+    console.error("❌ Error updating order status:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
