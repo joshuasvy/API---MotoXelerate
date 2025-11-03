@@ -129,8 +129,8 @@ router.get("/user/:userId", async (req, res) => {
       .populate({
         path: "items.product",
         model: "Product",
-        select: "productName specification price image", // ✅ only fetch needed fields
-        strictPopulate: false, // ✅ prevent crash on missing refs
+        select: "productName specification price image",
+        strictPopulate: false, // ✅ prevents crash on missing refs
       });
 
     const formattedOrders = orders.map((order) => ({
@@ -161,7 +161,7 @@ router.get("/user/:userId", async (req, res) => {
             status: item.status,
           };
         })
-        .filter(Boolean),
+        .filter(Boolean), // ✅ remove nulls
     }));
 
     res.status(200).json(formattedOrders);
