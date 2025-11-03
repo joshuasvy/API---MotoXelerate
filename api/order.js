@@ -84,7 +84,7 @@ router.post("/", async (req, res) => {
       totalOrder,
       paymentMethod,
       orderRequest: "For Approval",
-      deliveryAddress,
+      deliveryAddress: deliveryAddress || user.address, // ✅ fallback to user's address
       notes,
     });
 
