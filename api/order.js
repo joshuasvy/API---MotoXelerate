@@ -65,7 +65,7 @@ router.post("/", async (req, res) => {
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
-        status: "For Approval",
+        status: "For approval",
       });
     }
 
@@ -75,7 +75,7 @@ router.post("/", async (req, res) => {
       items: orderItems,
       totalOrder,
       paymentMethod,
-      orderRequest: "For Approval",
+      orderRequest: "For approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
     });
