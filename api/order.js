@@ -137,22 +137,11 @@ router.get("/user/:userId", async (req, res) => {
       .populate("items.product");
 
     const formatted = orders.map((order) => ({
-      orderId: order._id,
-      customerName: order.customerName,
-      orderDate: order.createdAt,
-      totalOrder: order.totalOrder,
-      paymentMethod: order.paymentMethod,
-      deliveryAddress: order.deliveryAddress || "No address provided",
-      notes: order.notes || "",
-      items: order.items.map((item) => ({
-        productId: item.product?._id || "N/A",
-        productName: item.product?.productName || "Unnamed Product",
-        specification: item.product?.specification || "No specification",
-        price: item.product?.price || 0,
-        image: item.product?.image || "",
-        quantity: item.quantity,
-        status: item.status,
-      })),
+      id: order._id,
+      name: order.customerName,
+      date: new Date(order.createdAt).toLocaleDateString(),
+      quantity: order.items.length,
+      payment: order.paymentMethod,
     }));
 
     res.status(200).json(formatted);
