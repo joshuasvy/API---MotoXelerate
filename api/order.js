@@ -123,15 +123,8 @@ router.get("/user/:userId", async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("items.product");
 
-    const formattedOrders = orders.map((order) => ({
-      orderId: order._id,
-      customerName: order.customerName,
-      orderDate: order.createdAt,
-      totalOrder: order.totalOrder,
-      paymentMethod: order.paymentMethod,
-      deliveryAddress: order.deliveryAddress || "No address provided",
-      notes: order.notes || "",
-      items: order.items.map((item, index) => {
+    items: order.items
+      .map((item, index) => {
         const product = item.product;
         const isMissing =
           !product || typeof product !== "object" || !product._id;
@@ -141,21 +134,21 @@ router.get("/user/:userId", async (req, res) => {
             `⚠️ Order ${order._id} item[${index}] missing product:`,
             item
           );
+          return null; // ⛔ skip this item
         }
 
         return {
-          productId: product?._id ?? `missing-${index}`,
-          productName: product?.productName ?? null,
-          specification: product?.specification ?? null,
-          price: product?.price ?? null,
-          image: product?.image ?? null,
+          productId: product._id,
+          productName: product.productName,
+          specification: product.specification,
+          price: product.price,
+          image: product.image,
           quantity: item.quantity,
           status: item.status,
         };
-      }),
-    }));
-
-    res.status(200).json(formattedOrders);
+      })
+      .filter(Boolean), // ✅ remove nulls
+      res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
     res
