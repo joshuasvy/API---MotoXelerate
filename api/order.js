@@ -136,21 +136,64 @@ router.get("/user/:userId", async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("items.product");
 
-    const formatted = orders.map((order) => ({
-      id: order._id,
-      name: order.customerName,
-      date: new Date(order.createdAt).toLocaleDateString(),
-      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
-      payment: order.paymentMethod,
-      address: order.deliveryAddress || "No address provided",
-      items: order.items.map((item) => ({
-        productName: item.product?.productName || "Unnamed Product",
-        specification: item.product?.specification || "",
-        image: item.product?.image || "https://via.placeholder.com/100",
-        price: item.product?.price || 0,
-        status: item.status,
-      })),
-    }));
+    const formatted = {
+      orderId: order._id,
+      customerName: order.customerName,
+      orderDate: order.createdAt,
+      totalOrder: order.totalOrder,
+      paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress || "No address provided",
+      notes: order.notes || "",
+      items: order.items.map((item, index) => {
+        const product = item.product;
+
+        if (!product || typeof product !== "object") {
+          console.warn(
+            `⚠️ Order ${order._id} item[${index}] product not populated or missing:`,
+            item
+          );
+        }
+
+        const productId = product?._id || `missing-${index}`;
+        const productName = product?.productName || "Unnamed Product";
+        const specification = product?.specification || "No specification";
+        const price = product?.price ?? 0;
+        const image = product?.image || "";
+
+        if (
+          productId.startsWith("missing") ||
+          productName === "Unnamed Product" ||
+          price === 0
+        ) {
+          console.warn(
+            `⚠️ Order ${order._id} item[${index}] has fallback values:`,
+            {
+              productId,
+              productName,
+              specification,
+              price,
+              image,
+              quantity: item.quantity,
+              status: item.status,
+            }
+          );
+        }
+
+        return {
+          productId,
+          productName,
+          specification,
+          price,
+          image,
+          quantity: item.quantity,
+          status: item.status,
+        };
+      }),
+    };
+
+    if (orders.length === 0) {
+      return res.status(404).json({ message: "No orders found for this user" });
+    }
 
     res.status(200).json(formatted);
   } catch (err) {
