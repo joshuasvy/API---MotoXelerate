@@ -132,57 +132,49 @@ router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-  const orders = await Order.find({ userId }) // ✅ Use singular model name
-    .sort({ createdAt: -1 })
-    .populate("items.product");
+    const orders = await Order.find({ userId }) // ✅ Use singular model name
+      .sort({ createdAt: -1 })
+      .populate("items.product");
 
-  const formattedOrders = orders.map((order) => ({
-    orderId: order._id,
-    customerName: order.customerName,
-    orderDate: order.createdAt,
-    totalOrder: order.totalOrder,
-    paymentMethod: order.paymentMethod,
-    deliveryAddress: order.deliveryAddress,
-    notes: order.notes,
-    items: order.items.map((item, index) => {
-      const product = item.product;
+    const formattedOrders = orders.map((order) => ({
+      orderId: order._id,
+      customerName: order.customerName,
+      orderDate: order.createdAt,
+      totalOrder: order.totalOrder,
+      paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress,
+      notes: order.notes,
+      items: order.items.map((item, index) => {
+        const product = item.product;
 
-      const isMissingProduct =
-        !product || typeof product !== "object" || !product._id;
+        const isMissingProduct =
+          !product || typeof product !== "object" || !product._id;
 
-      if (isMissingProduct) {
-        console.warn(
-          `⚠️ Order ${order._id} item[${index}] has missing product reference:`,
-          item
-        );
-      }
+        if (isMissingProduct) {
+          console.warn(
+            `⚠️ Order ${order._id} item[${index}] has missing product reference:`,
+            item
+          );
+        }
 
-      return {
-        productId: product?._id ?? `missing-${index}`,
-        productName: product?.productName ?? null,
-        specification: product?.specification ?? null,
-        price: product?.price ?? null,
-        image: product?.image ?? null,
-        quantity: item.quantity,
-        status: item.status,
-      };
-    }),
-  }));
+        return {
+          productId: product?._id ?? `missing-${index}`,
+          productName: product?.productName ?? null,
+          specification: product?.specification ?? null,
+          price: product?.price ?? null,
+          image: product?.image ?? null,
+          quantity: item.quantity,
+          status: item.status,
+        };
+      }),
+    }));
 
-  res.status(200).json(formattedOrders);
-} catch (err) {
-  console.error("❌ Failed to fetch orders:", err.message);
-  res.status(500).json({ error: "Internal server error", details: err.message });
-}
-
-
-
-    res.status(200).json(formatted);
+    res.status(200).json(formattedOrders);
   } catch (err) {
-    console.error("❌ Error fetching user orders:", err.message);
+    console.error("❌ Failed to fetch orders:", err.message);
     res
       .status(500)
-      .json({ message: "Failed to fetch user orders", error: err.message });
+      .json({ error: "Internal server error", details: err.message });
   }
 });
 
