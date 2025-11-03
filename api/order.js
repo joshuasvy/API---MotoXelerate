@@ -142,7 +142,10 @@ router.get("/user/:userId", async (req, res) => {
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress || "No address provided",
+      notes: order.notes || "",
       items: order.items.map((item) => ({
+        productId: item.product?._id || "N/A",
         productName: item.product?.productName || "Unnamed Product",
         specification: item.product?.specification || "No specification",
         price: item.product?.price || 0,
@@ -154,6 +157,7 @@ router.get("/user/:userId", async (req, res) => {
 
     res.status(200).json(formatted);
   } catch (err) {
+    console.error("❌ Error fetching user orders:", err.message);
     res
       .status(500)
       .json({ message: "Failed to fetch user orders", error: err.message });
@@ -165,13 +169,34 @@ router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const order = await Orders.findById(id);
+    const order = await Orders.findById(id).populate("items.product");
+
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json(order);
+    const formatted = {
+      orderId: order._id,
+      customerName: order.customerName,
+      orderDate: order.createdAt,
+      totalOrder: order.totalOrder,
+      paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress || "No address provided",
+      notes: order.notes || "",
+      items: order.items.map((item) => ({
+        productId: item.product?._id || "N/A",
+        productName: item.product?.productName || "Unnamed Product",
+        specification: item.product?.specification || "No specification",
+        price: item.product?.price || 0,
+        image: item.product?.image || "",
+        quantity: item.quantity,
+        status: item.status,
+      })),
+    };
+
+    res.status(200).json(formatted);
   } catch (err) {
+    console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
