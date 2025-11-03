@@ -140,8 +140,16 @@ router.get("/user/:userId", async (req, res) => {
       id: order._id,
       name: order.customerName,
       date: new Date(order.createdAt).toLocaleDateString(),
-      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0), // ✅ sums quantities
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       payment: order.paymentMethod,
+      address: order.deliveryAddress || "No address provided",
+      items: order.items.map((item) => ({
+        productName: item.product?.productName || "Unnamed Product",
+        specification: item.product?.specification || "",
+        image: item.product?.image || "https://via.placeholder.com/100",
+        price: item.product?.price || 0,
+        status: item.status,
+      })),
     }));
 
     res.status(200).json(formatted);
