@@ -1,5 +1,5 @@
 import express from "express";
-import Orders from "../models/Orders.js";
+import Order from "../models/Orders.js"; // ✅ Singular model name
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Users from "../models/Users.js";
@@ -43,10 +43,9 @@ router.post("/", async (req, res) => {
         console.log("❌ Product not found:", item.product);
         return res
           .status(404)
-          .json({ error: `Product not found: ${item.productId}` });
+          .json({ error: `Product not found: ${item.product}` });
       }
 
-      // 🧹 Defensive check for required fields
       const requiredFields = ["productName", "price", "image", "category"];
       const missing = requiredFields.filter(
         (field) => product[field] === undefined || product[field] === null
@@ -70,31 +69,21 @@ router.post("/", async (req, res) => {
       });
     }
 
-    if (orderItems.length === 0) {
-      console.log("❌ No valid items to place in order");
-      return res
-        .status(400)
-        .json({ error: "No valid items to place in order." });
-    }
-
-    const newOrder = new Orders({
+    const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
       items: orderItems,
       totalOrder,
       paymentMethod,
       orderRequest: "For Approval",
-      deliveryAddress: deliveryAddress || user.address, // ✅ fallback to user's address
+      deliveryAddress: deliveryAddress || user.address,
       notes,
     });
-
-    console.log("📦 Order to save:", JSON.stringify(newOrder, null, 2));
 
     const savedOrder = await newOrder.save();
     console.log("✅ Order saved:", savedOrder._id);
 
-    // 🧹 Remove only the ordered items from the cart
-    const cartUpdate = await Cart.findOneAndUpdate(
+    await Cart.findOneAndUpdate(
       { userId },
       {
         $pull: {
@@ -106,8 +95,6 @@ router.post("/", async (req, res) => {
       { new: true }
     );
 
-    console.log("🧹 Cart updated after checkout:", cartUpdate);
-
     res.status(201).json(savedOrder);
   } catch (err) {
     console.error("❌ Error during checkout:", err);
@@ -118,7 +105,7 @@ router.post("/", async (req, res) => {
 // 📦 Get all orders
 router.get("/", async (req, res) => {
   try {
-    const orders = await Orders.find().sort({ createdAt: -1 });
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.status(200).json(orders);
   } catch (err) {
     res
@@ -132,7 +119,7 @@ router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const orders = await Order.find({ userId }) // ✅ Use singular model name
+    const orders = await Order.find({ userId })
       .sort({ createdAt: -1 })
       .populate("items.product");
 
@@ -142,17 +129,16 @@ router.get("/user/:userId", async (req, res) => {
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod,
-      deliveryAddress: order.deliveryAddress,
-      notes: order.notes,
+      deliveryAddress: order.deliveryAddress || "No address provided",
+      notes: order.notes || "",
       items: order.items.map((item, index) => {
         const product = item.product;
-
-        const isMissingProduct =
+        const isMissing =
           !product || typeof product !== "object" || !product._id;
 
-        if (isMissingProduct) {
+        if (isMissing) {
           console.warn(
-            `⚠️ Order ${order._id} item[${index}] has missing product reference:`,
+            `⚠️ Order ${order._id} item[${index}] missing product:`,
             item
           );
         }
@@ -183,9 +169,7 @@ router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const order = await Orders.findById(req.params.id).populate(
-      "items.product"
-    );
+    const order = await Order.findById(id).populate("items.product");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -199,15 +183,28 @@ router.get("/:id", async (req, res) => {
       paymentMethod: order.paymentMethod,
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
-      items: order.items.map((item) => ({
-        productId: item.product?._id || "N/A",
-        productName: item.product?.productName || "Unnamed Product",
-        specification: item.product?.specification || "No specification",
-        price: item.product?.price || 0,
-        image: item.product?.image || "",
-        quantity: item.quantity,
-        status: item.status,
-      })),
+      items: order.items.map((item, index) => {
+        const product = item.product;
+        const isMissing =
+          !product || typeof product !== "object" || !product._id;
+
+        if (isMissing) {
+          console.warn(
+            `⚠️ Order ${order._id} item[${index}] missing product:`,
+            item
+          );
+        }
+
+        return {
+          productId: product?._id ?? `missing-${index}`,
+          productName: product?.productName ?? null,
+          specification: product?.specification ?? null,
+          price: product?.price ?? null,
+          image: product?.image ?? null,
+          quantity: item.quantity,
+          status: item.status,
+        };
+      }),
     };
 
     res.status(200).json(formatted);
@@ -227,12 +224,14 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
-    const order = await Orders.findById(id);
+    const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     order.items.forEach((item) => {
       const updatedItem = items.find(
-        (i) => i.productId.toString() === item.productId.toString()
+        (i) =>
+          i.productId.toString() === item.product.toString() ||
+          i.productId.toString() === item.productId?.toString()
       );
       if (updatedItem) {
         item.status = updatedItem.status;
