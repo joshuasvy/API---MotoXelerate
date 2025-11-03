@@ -65,7 +65,7 @@ router.post("/", async (req, res) => {
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
-        status: "Processing",
+        status: "For Approval",
       });
     }
 
