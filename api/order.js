@@ -118,37 +118,48 @@ router.get("/", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.warn("⚠️ Invalid userId:", userId);
+    return res.status(400).json({ error: "Invalid user ID." });
+  }
+
   try {
     const orders = await Order.find({ userId })
       .sort({ createdAt: -1 })
       .populate("items.product");
 
-    items: order.items
-      .map((item, index) => {
-        const product = item.product;
-        const isMissing =
-          !product || typeof product !== "object" || !product._id;
+    const formattedOrders = orders.map((order) => ({
+      orderId: order._id,
+      customerName: order.customerName,
+      orderDate: order.createdAt,
+      totalOrder: order.totalOrder,
+      paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress || "No address provided",
+      notes: order.notes || "",
+      items: order.items
+        .map((item, index) => {
+          const product = item.product;
+          if (!product || typeof product !== "object" || !product._id) {
+            console.warn(
+              `⚠️ Order ${order._id} item[${index}] missing product`
+            );
+            return null;
+          }
 
-        if (isMissing) {
-          console.warn(
-            `⚠️ Order ${order._id} item[${index}] missing product:`,
-            item
-          );
-          return null; // ⛔ skip this item
-        }
+          return {
+            productId: product._id,
+            productName: product.productName,
+            specification: product.specification,
+            price: product.price,
+            image: product.image,
+            quantity: item.quantity,
+            status: item.status,
+          };
+        })
+        .filter(Boolean), // ✅ remove nulls
+    }));
 
-        return {
-          productId: product._id,
-          productName: product.productName,
-          specification: product.specification,
-          price: product.price,
-          image: product.image,
-          quantity: item.quantity,
-          status: item.status,
-        };
-      })
-      .filter(Boolean), // ✅ remove nulls
-      res.status(200).json(formattedOrders);
+    res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
     res
