@@ -132,68 +132,50 @@ router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const orders = await Orders.find({ userId })
-      .sort({ createdAt: -1 })
-      .populate("items.product");
+  const orders = await Order.find({ userId }) // ✅ Use singular model name
+    .sort({ createdAt: -1 })
+    .populate("items.product");
 
-    const formatted = {
-      orderId: order._id,
-      customerName: order.customerName,
-      orderDate: order.createdAt,
-      totalOrder: order.totalOrder,
-      paymentMethod: order.paymentMethod,
-      deliveryAddress: order.deliveryAddress || "No address provided",
-      notes: order.notes || "",
-      items: order.items.map((item, index) => {
-        const product = item.product;
+  const formattedOrders = orders.map((order) => ({
+    orderId: order._id,
+    customerName: order.customerName,
+    orderDate: order.createdAt,
+    totalOrder: order.totalOrder,
+    paymentMethod: order.paymentMethod,
+    deliveryAddress: order.deliveryAddress,
+    notes: order.notes,
+    items: order.items.map((item, index) => {
+      const product = item.product;
 
-        if (!product || typeof product !== "object") {
-          console.warn(
-            `⚠️ Order ${order._id} item[${index}] product not populated or missing:`,
-            item
-          );
-        }
+      const isMissingProduct =
+        !product || typeof product !== "object" || !product._id;
 
-        const productId = product?._id || `missing-${index}`;
-        const productName = product?.productName || "Unnamed Product";
-        const specification = product?.specification || "No specification";
-        const price = product?.price ?? 0;
-        const image = product?.image || "";
+      if (isMissingProduct) {
+        console.warn(
+          `⚠️ Order ${order._id} item[${index}] has missing product reference:`,
+          item
+        );
+      }
 
-        if (
-          productId.startsWith("missing") ||
-          productName === "Unnamed Product" ||
-          price === 0
-        ) {
-          console.warn(
-            `⚠️ Order ${order._id} item[${index}] has fallback values:`,
-            {
-              productId,
-              productName,
-              specification,
-              price,
-              image,
-              quantity: item.quantity,
-              status: item.status,
-            }
-          );
-        }
+      return {
+        productId: product?._id ?? `missing-${index}`,
+        productName: product?.productName ?? null,
+        specification: product?.specification ?? null,
+        price: product?.price ?? null,
+        image: product?.image ?? null,
+        quantity: item.quantity,
+        status: item.status,
+      };
+    }),
+  }));
 
-        return {
-          productId,
-          productName,
-          specification,
-          price,
-          image,
-          quantity: item.quantity,
-          status: item.status,
-        };
-      }),
-    };
+  res.status(200).json(formattedOrders);
+} catch (err) {
+  console.error("❌ Failed to fetch orders:", err.message);
+  res.status(500).json({ error: "Internal server error", details: err.message });
+}
 
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No orders found for this user" });
-    }
+
 
     res.status(200).json(formatted);
   } catch (err) {
