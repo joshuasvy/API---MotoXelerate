@@ -9,15 +9,13 @@ router.post("/", async (req, res) => {
   const { productName, image, price, stock, category, specification } =
     req.body;
 
-  // 🛡️ Defensive log
   console.log("📥 Incoming product payload:", req.body);
 
-  // 🛡️ Validation
   const missingFields = [];
   if (!productName) missingFields.push("productName");
   if (!image) missingFields.push("image");
-  if (price == null) missingFields.push("price");
-  if (stock == null) missingFields.push("stock");
+  if (price == null || price === "") missingFields.push("price");
+  if (stock == null || stock === "") missingFields.push("stock");
   if (!category) missingFields.push("category");
   if (!specification) missingFields.push("specification");
 
