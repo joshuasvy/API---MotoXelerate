@@ -140,7 +140,7 @@ router.get("/user/:userId", async (req, res) => {
       id: order._id,
       name: order.customerName,
       date: new Date(order.createdAt).toLocaleDateString(),
-      quantity: order.items.length,
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0), // ✅ sums quantities
       payment: order.paymentMethod,
     }));
 
