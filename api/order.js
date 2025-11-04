@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import express from "express";
 import Order from "../models/Orders.js"; // ✅ Singular model name
 import Cart from "../models/Cart.js";
@@ -130,8 +131,13 @@ router.get("/user/:userId", async (req, res) => {
         path: "items.product",
         model: "Product",
         select: "productName specification price image",
-        strictPopulate: false, // ✅ prevents crash on missing refs
+        strictPopulate: false,
       });
+
+    if (!orders || orders.length === 0) {
+      console.warn("⚠️ No orders found for user:", userId);
+      return res.status(200).json([]);
+    }
 
     const formattedOrders = orders.map((order) => ({
       orderId: order._id,
@@ -161,7 +167,7 @@ router.get("/user/:userId", async (req, res) => {
             status: item.status,
           };
         })
-        .filter(Boolean), // ✅ remove nulls
+        .filter(Boolean),
     }));
 
     res.status(200).json(formattedOrders);
