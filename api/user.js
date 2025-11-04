@@ -123,6 +123,16 @@ router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
 
+    console.log("📥 Registration attempt:", {
+      firstName,
+      lastName,
+      address,
+      contact,
+      email,
+      password,
+    });
+
+    // ✅ Validate required fields
     if (
       !firstName ||
       !lastName ||
@@ -131,21 +141,29 @@ router.post("/register", async (req, res) => {
       !email ||
       !password
     ) {
+      console.warn("⚠️ Missing required fields");
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ✅ Check for existing user
+    const existingUser = await Users.findOne({ email });
+    if (existingUser) {
+      console.warn("⚠️ Email already registered:", email);
+      return res.status(409).json({ message: "Email already exists." });
+    }
 
+    // ✅ Create user (schema will hash password)
     const newUser = new Users({
       firstName,
       lastName,
       address,
       contact,
       email,
-      password: hashedPassword,
+      password, // plain password — schema will hash it
     });
 
     await newUser.save();
+    console.log("✅ User registered:", newUser._id);
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
