@@ -158,15 +158,32 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
+  console.log("📥 Login attempt:", { email, password });
+
   try {
     const user = await Users.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user) {
+      console.warn("❌ No user found with email:", email);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("🔍 Found user:", {
+      id: user._id,
+      email: user.email,
+      hashedPassword: user.password,
+    });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    console.log("🔐 Password match result:", isMatch);
+
+    if (!isMatch) {
+      console.warn("❌ Password mismatch for user:", email);
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET);
+    console.log("✅ Login successful. Token generated for user:", user._id);
 
     res.json({ message: "Login successful", token, user });
   } catch (err) {
