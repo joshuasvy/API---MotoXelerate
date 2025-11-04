@@ -10,7 +10,7 @@ router.post("/", async (req, res) => {
   const { userId, product } = req.body;
 
   if (!userId || !product) {
-    console.log("⚠️ Missing userId or product");
+    console.warn("⚠️ Missing userId or product");
     return res.status(400).json({ error: "Missing userId or product." });
   }
 
@@ -19,7 +19,7 @@ router.post("/", async (req, res) => {
     console.log("🧪 Product fetched:", productDoc);
 
     if (!productDoc) {
-      console.log("❌ Product not found");
+      console.warn("❌ Product not found:", product);
       return res.status(404).json({ error: "Product not found." });
     }
 
@@ -27,7 +27,7 @@ router.post("/", async (req, res) => {
     const requiredFields = ["productName", "price", "image", "category"];
     for (const field of requiredFields) {
       if (productDoc[field] === undefined || productDoc[field] === null) {
-        console.log(`❌ Missing field in product: ${field}`);
+        console.warn(`❌ Missing field in product: ${field}`);
         return res.status(400).json({
           error: `Product is missing required field: ${field}`,
         });
@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
     }
 
     let cart = await Cart.findOne({ userId });
-    console.log("🧪 Existing cart:", cart);
+    console.log("🧪 Existing cart:", cart ? cart._id : "None");
 
     const newItem = {
       product: productDoc._id,
@@ -55,18 +55,26 @@ router.post("/", async (req, res) => {
         userId,
         items: [newItem],
       });
-      console.log("🆕 New cart created");
+      console.log("🆕 New cart created for user:", userId);
     } else {
-      // 🧹 Clean up legacy items missing required fields
-      cart.items = cart.items.filter((item) => {
+      // 🧹 Clean up legacy items with typos or missing fields
+      cart.items = cart.items.filter((item, index) => {
+        const hasTypo = item.productNaame && !item.productName;
         const isValid =
+          item.product &&
           item.productName &&
           item.price !== undefined &&
           item.image &&
           item.category;
-        if (!isValid) {
-          console.log("🧹 Removing invalid item:", item);
+
+        if (hasTypo) {
+          console.warn("🧹 Typo detected at index", index, ":", item);
         }
+
+        if (!isValid) {
+          console.warn("🧹 Removing invalid item at index", index, ":", item);
+        }
+
         return isValid;
       });
 
@@ -74,14 +82,20 @@ router.post("/", async (req, res) => {
         (item) => item.product.toString() === productDoc._id.toString()
       );
 
-      console.log("🧪 Existing item match:", existingItem);
+      console.log(
+        "🧪 Existing item match:",
+        existingItem ? existingItem._id : "None"
+      );
 
       if (existingItem) {
         existingItem.quantity += 1;
-        console.log("🔁 Incremented quantity for existing item");
+        console.log(
+          "🔁 Incremented quantity for existing item:",
+          existingItem._id
+        );
       } else {
         cart.items.push({ ...newItem });
-        console.log("➕ Pushed new item to cart");
+        console.log("➕ Pushed new item to cart:", newItem.productName);
       }
     }
 
@@ -91,14 +105,16 @@ router.post("/", async (req, res) => {
     );
 
     const saved = await cart.save();
+    console.log("✅ Cart saved:", saved._id);
+
     const populated = await Cart.findById(saved._id)
       .populate("userId", "firstName lastName")
       .exec();
 
-    console.log("✅ Cart saved and populated:", populated);
+    console.log("✅ Cart populated with user info:", populated.userId);
     res.status(201).json(populated);
   } catch (err) {
-    console.error("❌ Error creating/updating cart:", err);
+    console.error("❌ Error creating/updating cart:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
