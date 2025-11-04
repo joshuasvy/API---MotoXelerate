@@ -123,15 +123,6 @@ router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
 
-    console.log("📥 Registration attempt (no hashing):", {
-      firstName,
-      lastName,
-      address,
-      contact,
-      email,
-      password,
-    });
-
     if (
       !firstName ||
       !lastName ||
@@ -140,28 +131,21 @@ router.post("/register", async (req, res) => {
       !email ||
       !password
     ) {
-      console.warn("⚠️ Missing required fields");
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    const existingUser = await Users.findOne({ email });
-    if (existingUser) {
-      console.warn("⚠️ Email already registered:", email);
-      return res.status(409).json({ message: "Email already exists." });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Save password as plaintext (for testing only)
     const newUser = new Users({
       firstName,
       lastName,
       address,
       contact,
       email,
-      password, // no hashing
+      password: hashedPassword,
     });
 
     await newUser.save();
-    console.log("✅ User registered (plaintext password):", newUser._id);
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
@@ -174,7 +158,7 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("📥 Login attempt:", { email, password });
+  console.log("📥 Login attempt (no hashing):", { email, password });
 
   try {
     const user = await Users.findOne({ email });
@@ -187,18 +171,22 @@ router.post("/login", async (req, res) => {
     console.log("🔍 Found user:", {
       id: user._id,
       email: user.email,
-      hashedPassword: user.password,
+      storedPassword: user.password,
     });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log("🔐 Password match result:", isMatch);
+    // ✅ Plaintext comparison (no bcrypt)
+    const isMatch = password === user.password;
+    console.log("🔐 Plaintext password match result:", isMatch);
 
     if (!isMatch) {
       console.warn("❌ Password mismatch for user:", email);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET);
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET
+    );
     console.log("✅ Login successful. Token generated for user:", user._id);
 
     res.json({ message: "Login successful", token, user });
