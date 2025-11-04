@@ -26,11 +26,11 @@ const usersSchema = new mongoose.Schema({
   },
 });
 
-// // ✅ Hash password before saving
-// usersSchema.pre("save", async function (next) {
-//   if (!this.isModified("password")) return next();
-//   this.password = await bcrypt.hash(this.password, 10);
-//   next();
-// });
+// ✅ Hash password before saving
+usersSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
 
 export default mongoose.model("Users", usersSchema);
