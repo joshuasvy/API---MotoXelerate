@@ -186,4 +186,17 @@ router.get("/all", async (req, res) => {
   }
 });
 
+// 📦 Get all users
+router.get("/users", async (req, res) => {
+  try {
+    const users = await Users.find().select(
+      "firstName lastName contact email address"
+    );
+    res.status(200).json(users);
+  } catch (err) {
+    console.error("❌ Failed to fetch users:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
