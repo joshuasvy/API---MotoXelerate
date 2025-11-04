@@ -47,21 +47,27 @@ router.post("/", async (req, res) => {
 
 // ✏️ Update product by ID
 router.put("/:id", async (req, res) => {
+  console.log("📥 PUT /product/:id hit");
+  console.log("🧾 Incoming payload:", req.body);
+
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });
 
     if (!updated) {
+      console.warn("⚠️ Product not found:", req.params.id);
       return res.status(404).json({ message: "Product not found" });
     }
 
+    console.log("✅ Product updated:", updated);
     res.json(updated);
   } catch (err) {
     console.error("❌ Error updating product:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // 📦 Get all products
 router.get("/", async (req, res) => {
