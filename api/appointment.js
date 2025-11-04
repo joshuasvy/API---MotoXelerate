@@ -66,6 +66,26 @@ router.get("/user", authToken, async (req, res) => {
   res.status(200).json(appointments);
 });
 
+// 📅 Get recent appointment by userId (public)
+router.get("/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const appointment = await Appointments.findOne({ userId })
+      .sort({ date: -1 }) // ✅ most recent
+      .select("service_Type date time status service_Charge");
+
+    if (!appointment) {
+      return res.status(404).json({ message: "No appointment found" });
+    }
+
+    res.status(200).json(appointment);
+  } catch (err) {
+    console.error("❌ Failed to fetch appointment:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.put("/:id", authToken, async (req, res) => {
   try {
     const { id } = req.params;
