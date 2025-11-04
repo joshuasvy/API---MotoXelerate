@@ -123,6 +123,15 @@ router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
 
+    console.log("📥 Registration attempt:", {
+      firstName,
+      lastName,
+      address,
+      contact,
+      email,
+      password,
+    });
+
     if (
       !firstName ||
       !lastName ||
@@ -131,10 +140,15 @@ router.post("/register", async (req, res) => {
       !email ||
       !password
     ) {
+      console.warn("⚠️ Missing required fields");
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existingUser = await Users.findOne({ email });
+    if (existingUser) {
+      console.warn("⚠️ Email already registered:", email);
+      return res.status(409).json({ message: "Email already exists." });
+    }
 
     const newUser = new Users({
       firstName,
@@ -142,11 +156,11 @@ router.post("/register", async (req, res) => {
       address,
       contact,
       email,
-      password: hashedPassword,
+      password, // plain password — schema will hash it
     });
 
     await newUser.save();
-
+    console.log("✅ User registered:", newUser._id);
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
     console.error("❌ Registration error:", err);
@@ -158,7 +172,7 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("📥 Login attempt (no hashing):", { email, password });
+  console.log("📥 Login attempt:", { email, password });
 
   try {
     const user = await Users.findOne({ email });
@@ -171,12 +185,11 @@ router.post("/login", async (req, res) => {
     console.log("🔍 Found user:", {
       id: user._id,
       email: user.email,
-      storedPassword: user.password,
+      hashedPassword: user.password,
     });
 
-    // ✅ Plaintext comparison (no bcrypt)
-    const isMatch = password === user.password;
-    console.log("🔐 Plaintext password match result:", isMatch);
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("🔐 Password match result:", isMatch);
 
     if (!isMatch) {
       console.warn("❌ Password mismatch for user:", email);
