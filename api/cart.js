@@ -255,4 +255,57 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+router.patch("/admin/fix-cart-items/:userId", async (req, res) => {
+  const { userId } = req.params;
+  console.log("🧪 Fixing cart for user:", userId);
+
+  try {
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    const originalCount = cart.items.length;
+
+    cart.items = cart.items.filter((item, index) => {
+      const hasTypo =
+        item.productNaame || item.prroductName || !item.productName;
+      const isValid =
+        item.product &&
+        item.productName &&
+        item.price !== undefined &&
+        item.image &&
+        item.category;
+
+      if (hasTypo) {
+        console.warn(`🧹 Typo detected at index ${index}:`, item);
+      }
+
+      if (!isValid) {
+        console.warn(`🧹 Removing invalid item at index ${index}:`, item);
+      }
+
+      return isValid;
+    });
+
+    if (cart.items.length < originalCount) {
+      await cart.save();
+      console.log(
+        `✅ Cart cleaned: ${originalCount - cart.items.length} items removed`
+      );
+    } else {
+      console.log("✅ No invalid items found");
+    }
+
+    res.json({
+      message: "Cart cleaned",
+      removed: originalCount - cart.items.length,
+    });
+  } catch (err) {
+    console.error("❌ Error cleaning cart:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
