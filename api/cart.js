@@ -213,19 +213,29 @@ router.delete("/:id", async (req, res) => {
 
 // 📦 Get cart by userId
 router.get("/:userId", async (req, res) => {
+  const { userId } = req.params;
+  console.log("📦 Fetching cart for user:", userId);
+
   try {
-    const cart = await Cart.findOne({ userId: req.params.userId })
-      .populate("items.product")
-      .populate("userId", "firstName lastName");
+    let cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: "Cart not found" });
+      console.warn("⚠️ Cart not found. Creating empty cart for user:", userId);
+
+      cart = new Cart({
+        userId,
+        items: [],
+        total: 0,
+      });
+
+      await cart.save();
+      console.log("✅ Empty cart created:", cart._id);
     }
 
     res.status(200).json(cart);
   } catch (err) {
-    console.error("❌ Error fetching cart:", err);
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error fetching cart:", err.message);
+    res.status(500).json({ error: "Failed to fetch cart" });
   }
 });
 
