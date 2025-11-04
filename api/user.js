@@ -123,7 +123,7 @@ router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
 
-    console.log("📥 Registration attempt:", {
+    console.log("📥 Registration attempt (no hashing):", {
       firstName,
       lastName,
       address,
@@ -150,17 +150,19 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ message: "Email already exists." });
     }
 
+    // ✅ Save password as plaintext (for testing only)
     const newUser = new Users({
       firstName,
       lastName,
       address,
       contact,
       email,
-      password, // plain password — schema will hash it
+      password, // no hashing
     });
 
     await newUser.save();
-    console.log("✅ User registered:", newUser._id);
+    console.log("✅ User registered (plaintext password):", newUser._id);
+
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
     console.error("❌ Registration error:", err);
