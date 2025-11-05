@@ -29,8 +29,8 @@ router.post("/", async (req, res) => {
 
   try {
     const newProduct = new Product({
-      productName,
-      image,
+      productName: productName.trim(),
+      image: image.trim(),
       price,
       stock,
       category,
@@ -67,7 +67,6 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // 📦 Get all products
 router.get("/", async (req, res) => {
