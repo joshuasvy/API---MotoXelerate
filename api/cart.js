@@ -139,12 +139,13 @@ router.put("/:id", async (req, res) => {
 
 // 🧹 Remove item from cart
 router.put("/:id/remove", async (req, res) => {
-  console.log("🛠️ /:id/remove route hit:", req.params.id, req.body.itemId);
   const { itemId } = req.body;
+  console.log("🛠️ /cart/:id/remove hit with itemId:", itemId);
 
   try {
     const cart = await Cart.findById(req.params.id);
     if (!cart) {
+      console.warn("⚠️ Cart not found:", req.params.id);
       return res.status(404).json({ message: "Cart not found" });
     }
 
