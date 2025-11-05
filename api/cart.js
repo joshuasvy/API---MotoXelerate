@@ -139,8 +139,11 @@ router.put("/:id", async (req, res) => {
 
 // 🧹 Remove item from cart
 router.put("/:id/remove", async (req, res) => {
+  console.log("🛠️ /cart/:id/remove hit");
+  console.log("📦 Full body:", req.body);
+
   const { itemId } = req.body;
-  console.log("🛠️ /cart/:id/remove hit with itemId:", itemId);
+  console.log("🔍 Extracted itemId:", itemId);
 
   try {
     const cart = await Cart.findById(req.params.id);
