@@ -155,7 +155,7 @@ router.put("/:id/remove", async (req, res) => {
     const originalLength = cart.items.length;
 
     cart.items = cart.items.filter((item) => {
-      const match = item._id.toString() !== itemId;
+      const match = !item._id.equals(itemId);
       if (!match) {
         console.log("🗑️ Removing item:", item._id.toString());
       }
