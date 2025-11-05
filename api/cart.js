@@ -139,8 +139,8 @@ router.put("/:id", async (req, res) => {
 
 // 🧹 Remove item from cart
 router.put("/:id/remove", async (req, res) => {
-  console.log("🛠️ /:id/remove route hit:", req.params.id, req.body.productId);
-  const { productId } = req.body;
+  console.log("🛠️ /:id/remove route hit:", req.params.id, req.body.itemId);
+  const { itemId } = req.body;
 
   try {
     const cart = await Cart.findById(req.params.id);
@@ -148,9 +148,12 @@ router.put("/:id/remove", async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    cart.items = cart.items.filter(
-      (item) => item.product.toString() !== productId
-    );
+    const originalLength = cart.items.length;
+
+    cart.items = cart.items.filter((item) => item._id.toString() !== itemId);
+
+    const removedCount = originalLength - cart.items.length;
+    console.log(`🗑️ Removed ${removedCount} item(s) from cart.`);
 
     await cart.save();
 
