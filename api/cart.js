@@ -154,7 +154,13 @@ router.put("/:id/remove", async (req, res) => {
 
     const originalLength = cart.items.length;
 
-    cart.items = cart.items.filter((item) => item._id.toString() !== itemId);
+    cart.items = cart.items.filter((item) => {
+      const match = item._id.toString() !== itemId;
+      if (!match) {
+        console.log("🗑️ Removing item:", item._id.toString());
+      }
+      return match;
+    });
 
     const removedCount = originalLength - cart.items.length;
     console.log(`🗑️ Removed ${removedCount} item(s) from cart.`);
