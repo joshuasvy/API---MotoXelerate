@@ -5,7 +5,20 @@ import https from "https";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
+  console.log("📥 Incoming GCash request:", req.body);
+
+  // Defensive input validation
+  if (!req.body || typeof req.body !== "object") {
+    console.warn("⚠️ Invalid request body:", req.body);
+    return res.status(400).json({ error: "Invalid request body" });
+  }
+
   const { amount, userId } = req.body;
+
+  if (!amount || !userId) {
+    console.warn("⚠️ Missing required fields:", { amount, userId });
+    return res.status(400).json({ error: "Missing amount or userId" });
+  }
 
   const xenditKey = process.env.XENDIT_GCASH_API;
   if (!xenditKey) {
@@ -13,13 +26,24 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ error: "Missing Xendit API key" });
   }
 
-  console.log("🔐 Using Xendit key:", xenditKey.slice(0, 6), "...");
+  console.log(
+    "🔐 Key mode:",
+    xenditKey.startsWith("xnd_live_") ? "LIVE" : "DEVELOPMENT"
+  );
+  console.log("🔐 Using Xendit key:", xenditKey.slice(0, 12), "...");
 
   const callbackUrl = "https://api-motoxelerate.onrender.com/api/webhooks";
   const referenceId = `gcash-${Date.now()}-${userId}`;
 
   const safeAmount = Math.floor(Number(amount));
+  if (isNaN(safeAmount) || safeAmount <= 0) {
+    console.warn("⚠️ Invalid amount:", amount);
+    return res.status(400).json({ error: "Invalid amount" });
+  }
+
   console.log("💰 Sending amount:", safeAmount);
+  console.log("📎 Reference ID:", referenceId);
+  console.log("🔗 Callback URL:", callbackUrl);
 
   const payload = {
     reference_id: referenceId,
@@ -35,9 +59,11 @@ router.post("/", async (req, res) => {
   };
 
   try {
-    // Optional: ping Xendit to confirm connectivity
+    console.log("📡 Pinging Xendit...");
     const ping = await axios.get("https://api.xendit.co");
     console.log("✅ Xendit ping success:", ping.status);
+
+    console.log("🚀 Sending charge payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       "https://api.xendit.co/ewallets/charges",
@@ -55,16 +81,15 @@ router.post("/", async (req, res) => {
       }
     );
 
+    console.log("📥 Xendit response status:", response.status);
+    console.log(
+      "📥 Xendit response data:",
+      JSON.stringify(response.data, null, 2)
+    );
+
     if (response.status !== 201) {
       throw new Error("Failed to create GCash charge");
     }
-
-    console.log("📌 GCash charge created:", {
-      referenceId,
-      chargeId: response.data.id,
-      amount: safeAmount,
-      status: "Pending",
-    });
 
     res.json({
       checkout_url: response.data.actions.desktop_web_checkout_url,
@@ -77,13 +102,20 @@ router.post("/", async (req, res) => {
     console.error("❌ Axios error code:", err.code);
     console.error("❌ Axios error message:", err.message);
 
-    const errorData = err.response?.data;
-    const errorStatus = err.response?.status;
-    const errorHeaders = err.response?.headers;
+    if (err.response) {
+      console.error("❌ Xendit error status:", err.response.status);
+      console.error("❌ Xendit error headers:", err.response.headers);
+      console.error(
+        "❌ Xendit error data:",
+        JSON.stringify(err.response.data, null, 2)
+      );
+    } else if (err.request) {
+      console.error("❌ No response received from Xendit:", err.request);
+    } else {
+      console.error("❌ Unexpected error:", err.message);
+    }
 
-    console.error("❌ Xendit error status:", errorStatus);
-    console.error("❌ Xendit error headers:", errorHeaders);
-    console.error("❌ Xendit error data:", JSON.stringify(errorData, null, 2));
+    console.error("🧨 Full error object:", err.toJSON?.() || err);
 
     res.status(500).json({ error: "GCash payment failed" });
   }
