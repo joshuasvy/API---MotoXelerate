@@ -24,12 +24,10 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Missing or invalid status");
   }
 
-  const normalizedStatus =
-    status === "SUCCEEDED"
-      ? "Succeeded"
-      : status === "FAILED"
-      ? "Failed"
-      : "Pending";
+  // ✅ Normalize status to capitalized form
+  const capitalize = (s) =>
+    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  const normalizedStatus = capitalize(status); // "SUCCEEDED" → "Succeeded"
 
   console.log("🔍 Normalized status:", normalizedStatus);
   console.log("💰 Incoming amount:", amount);
@@ -38,7 +36,7 @@ router.post("/", async (req, res) => {
     const updated = await Order.findOneAndUpdate(
       { "payment.referenceId": reference_id },
       {
-        "payment.status": status,
+        "payment.status": normalizedStatus,
         "payment.amount": amount,
         "payment.paidAt": new Date(),
         status: normalizedStatus,
