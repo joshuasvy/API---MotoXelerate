@@ -33,7 +33,9 @@ router.post("/", async (req, res) => {
   console.log("🔐 Using Xendit key:", xenditKey.slice(0, 12), "...");
 
   const callbackUrl = "https://api-motoxelerate.onrender.com/api/webhooks";
-  const referenceId = `gcash-${Date.now()}-${userId}`;
+  const referenceId = `gcash-${userId}-${Date.now()}-${Math.floor(
+    Math.random() * 10000
+  )}`;
 
   const safeAmount = Math.floor(Number(amount));
   if (isNaN(safeAmount) || safeAmount <= 0) {
