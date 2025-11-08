@@ -243,7 +243,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.get("/:referenceId", async (req, res) => {
+router.get("/reference/:referenceId", async (req, res) => {
   const { referenceId } = req.params;
 
   if (!referenceId) {

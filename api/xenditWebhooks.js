@@ -12,7 +12,7 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Invalid webhook payload");
   }
 
-  const { reference_id, status, amount } = req.body;
+  const { reference_id, status, amount } = req.body.data || {};
 
   if (!reference_id || typeof reference_id !== "string") {
     console.warn("⚠️ Missing or invalid reference_id:", reference_id);
