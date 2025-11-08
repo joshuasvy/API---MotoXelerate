@@ -66,7 +66,14 @@ router.post("/", async (req, res) => {
       paid_amount: amount,
     });
   } catch (err) {
-    console.error("❌ Xendit error:", err.response?.data || err.message);
+    const errorData = err.response?.data;
+    const errorStatus = err.response?.status;
+    const errorHeaders = err.response?.headers;
+
+    console.error("❌ Xendit error status:", errorStatus);
+    console.error("❌ Xendit error headers:", errorHeaders);
+    console.error("❌ Xendit error data:", JSON.stringify(errorData, null, 2));
+
     res.status(500).json({ error: "GCash payment failed" });
   }
 });
