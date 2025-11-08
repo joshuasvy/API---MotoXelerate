@@ -20,13 +20,14 @@ router.post("/", async (req, res) => {
   const payload = {
     reference_id: referenceId,
     currency: "PHP",
-    amount: amount || 1000,
+    amount: amount,
     checkout_method: "ONE_TIME_PAYMENT",
     channel_code: "PH_GCASH",
     channel_properties: {
       success_redirect_url: "myapp://gcash-success",
       failure_redirect_url: "myapp://gcash-failure",
     },
+    callback_url: callbackUrl, // ✅ Correct placement
   };
 
   try {
@@ -40,10 +41,13 @@ router.post("/", async (req, res) => {
         },
         headers: {
           "Content-Type": "application/json",
-          "x-callback-url": callbackUrl, // ✅ Correct placement
         },
       }
     );
+
+    if (response.status !== 201) {
+      throw new Error("Failed to create GCash charge");
+    }
 
     console.log("📌 GCash charge created:", {
       referenceId,

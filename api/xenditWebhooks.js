@@ -4,13 +4,13 @@ import Order from "../models/Orders.js";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const { reference_id, status } = req.body;
+  const { reference_id, status, amount } = req.body;
+  console.log("📦 Incoming webhook payload:", req.body);
 
   if (!reference_id || !status) {
     return res.status(400).send("Missing reference_id or status");
   }
 
-  // Convert Xendit's status to your Order.status enum
   const normalizedStatus =
     status === "SUCCEEDED"
       ? "Succeeded"
@@ -23,8 +23,9 @@ router.post("/", async (req, res) => {
       { "payment.referenceId": reference_id },
       {
         "payment.status": status,
+        "payment.amount": amount,
         "payment.paidAt": new Date(),
-        status: normalizedStatus, // ✅ Update top-level status
+        status: normalizedStatus,
       }
     );
 
