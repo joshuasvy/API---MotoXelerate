@@ -210,8 +210,11 @@ router.get("/:id", async (req, res) => {
       customerName: order.customerName,
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
-      paymentStatus: order.payment?.status ?? "N/A", // ✅ Explicit status
-      paymentMethod: order.paymentMethod ?? "N/A", // ✅ Add this line
+      paymentMethod: order.paymentMethod ?? "N/A",
+      paymentStatus:
+        order.payment && typeof order.payment === "object"
+          ? order.payment.status ?? "Missing status"
+          : "Missing payment object",
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
       items: order.items.map((item, index) => {
@@ -237,6 +240,11 @@ router.get("/:id", async (req, res) => {
         };
       }),
     };
+    console.log("🧾 Final formatted order:", {
+      payment: order.payment,
+      paymentStatus: order.payment?.status,
+      paymentMethod: order.paymentMethod,
+    });
 
     res.status(200).json(formatted);
   } catch (err) {
