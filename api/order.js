@@ -160,7 +160,7 @@ router.get("/user/:userId", async (req, res) => {
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod,
-      payment: order.payment, // ✅ Add this line
+      paymentStatus: order.payment?.status ?? "N/A", // ✅ Explicit status
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
       items: order.items
@@ -212,7 +212,7 @@ router.get("/:id", async (req, res) => {
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod,
-      payment: order.payment, // ✅ Add this line
+      paymentStatus: order.payment?.status ?? "N/A", // ✅ Explicit status
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
       items: order.items.map((item, index) => {
