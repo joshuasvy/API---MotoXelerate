@@ -10,6 +10,7 @@ import cartRoutes from "./api/cart.js";
 import orderRoutes from "./api/order.js";
 import xenditGcashRoutes from "./api/xenditGcash.js";
 import xenditWebhooks from "./api/xenditWebhooks.js";
+import mockWebhook from "./api/mockWebhook.js";
 
 dotenv.config();
 const app = express();
@@ -38,11 +39,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/gcash", xenditGcashRoutes);
 app.use("/api/webhooks", xenditWebhooks);
-
-app.post("/api/gcash/webhook", (req, res) => {
-  console.log("📦 Incoming mock webhook (hardcoded):", req.body);
-  res.status(200).send("Mock webhook received");
-});
+app.use("/api/gcash/webhook", mockWebhook);
 
 // 404 handler
 app.use((req, res) => {
