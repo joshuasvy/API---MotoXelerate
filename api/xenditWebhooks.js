@@ -36,10 +36,12 @@ router.post("/", async (req, res) => {
     const updated = await Order.findOneAndUpdate(
       { "payment.referenceId": reference_id },
       {
-        "payment.status": normalizedStatus,
-        "payment.amount": amount,
-        "payment.paidAt": new Date(),
-        status: normalizedStatus,
+        $set: {
+          "payment.status": normalizedStatus,
+          "payment.amount": amount,
+          "payment.paidAt": new Date(),
+          status: normalizedStatus,
+        },
       },
       { new: true }
     );

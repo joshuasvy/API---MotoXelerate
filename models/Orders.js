@@ -46,15 +46,15 @@ const orderSchema = new mongoose.Schema(
 
     // ✅ Embedded payment tracking
     payment: {
-      referenceId: { type: String, unique: true },
-      chargeId: { type: String },
-      amount: { type: Number, required: true }, // Actual amount charged
+      referenceId: { type: String, unique: true, index: true },
+      chargeId: { type: String, default: null },
+      amount: { type: Number, required: true },
       status: {
         type: String,
         enum: ["Pending", "Succeeded", "Failed"],
         default: "Pending",
       },
-      paidAt: { type: Date },
+      paidAt: { type: Date, default: null },
     },
   },
   { timestamps: true }
