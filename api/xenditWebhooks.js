@@ -10,12 +10,21 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Missing reference_id or status");
   }
 
+  // Convert Xendit's status to your Order.status enum
+  const normalizedStatus =
+    status === "SUCCEEDED"
+      ? "Succeeded"
+      : status === "FAILED"
+      ? "Failed"
+      : "Pending";
+
   try {
     const updated = await Order.findOneAndUpdate(
       { "payment.referenceId": reference_id },
       {
         "payment.status": status,
         "payment.paidAt": new Date(),
+        status: normalizedStatus, // ✅ Update top-level status
       }
     );
 
@@ -24,7 +33,7 @@ router.post("/", async (req, res) => {
       return res.status(404).send("Order not found");
     }
 
-    console.log("✅ Payment status updated:", reference_id, status);
+    console.log("✅ Payment + Order status updated:", reference_id, status);
     res.status(200).send("Webhook received");
   } catch (err) {
     console.error("❌ Webhook error:", err.message);
