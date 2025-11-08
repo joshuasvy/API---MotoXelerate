@@ -243,6 +243,34 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.get("/:referenceId", async (req, res) => {
+  const { referenceId } = req.params;
+
+  if (!referenceId) {
+    console.warn("⚠️ Missing referenceId in request");
+    return res.status(400).json({ error: "Missing referenceId" });
+  }
+
+  try {
+    const order = await Order.findOne({ "payment.referenceId": referenceId });
+
+    if (!order) {
+      console.warn("⚠️ No order found for referenceId:", referenceId);
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    console.log("📦 Found order for polling:", {
+      referenceId,
+      status: order.payment?.status,
+    });
+
+    res.json(order);
+  } catch (err) {
+    console.error("❌ Error fetching order by referenceId:", err.message);
+    res.status(500).json({ error: "Failed to fetch order" });
+  }
+});
+
 // 🔄 Update item status in an order
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
