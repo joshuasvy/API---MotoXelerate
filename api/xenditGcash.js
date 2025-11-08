@@ -59,10 +59,6 @@ router.post("/", async (req, res) => {
   };
 
   try {
-    console.log("📡 Pinging Xendit...");
-    const ping = await axios.get("https://api.xendit.co");
-    console.log("✅ Xendit ping success:", ping.status);
-
     console.log("🚀 Sending charge payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
