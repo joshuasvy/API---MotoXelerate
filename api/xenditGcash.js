@@ -11,19 +11,22 @@ router.post("/", async (req, res) => {
     throw new Error("Missing XENDIT_GCASH_API in environment variables");
   }
 
-  const callbackUrl = "https://api-motoxelerate.onrender.com/api/gcash/webhook";
+  // ✅ Define your webhook endpoint (must match your deployed backend route)
+  const callbackUrl =
+    "https://api-motoxelerate.onrender.com/api/xenditWebhooks";
+
+  const referenceId = `gcash-${Date.now()}-${userId}`;
 
   const payload = {
-    reference_id: `gcash-${Date.now()}`,
+    reference_id: referenceId,
     currency: "PHP",
-    amount: amount || 1000, // use dynamic amount if provided
+    amount: amount || 1000,
     checkout_method: "ONE_TIME_PAYMENT",
     channel_code: "PH_GCASH",
     channel_properties: {
       success_redirect_url: "myapp://gcash-success",
       failure_redirect_url: "myapp://gcash-failure",
     },
-    // ❌ Do NOT include callback_url here
   };
 
   try {
@@ -37,12 +40,26 @@ router.post("/", async (req, res) => {
         },
         headers: {
           "Content-Type": "application/json",
-          "x-callback-url": callbackUrl,
+          "x-callback-url": callbackUrl, // ✅ Correct placement
         },
       }
     );
 
-    res.json(response.data);
+    // ✅ Save referenceId for later verification
+    await savePaymentReference({
+      referenceId,
+      userId,
+      amount,
+      chargeId: response.data.id,
+      status: "PENDING",
+    });
+
+    res.json({
+      checkout_url: response.data.actions.desktop_web_checkout_url,
+      reference_id: referenceId,
+      charge_id: response.data.id,
+      paid_amount: amount,
+    });
   } catch (err) {
     console.error(err.response?.data || err.message);
     res.status(500).json({ error: "GCash payment failed" });

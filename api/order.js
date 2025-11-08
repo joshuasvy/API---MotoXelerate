@@ -17,6 +17,9 @@ router.post("/", async (req, res) => {
     paymentMethod,
     deliveryAddress,
     notes,
+    referenceId, // ✅ Add this from frontend or GCash charge route
+    chargeId, // ✅ Add this from Xendit response
+    paidAmount, // ✅ Add this from Xendit charge payload
   } = req.body;
 
   if (
@@ -79,6 +82,17 @@ router.post("/", async (req, res) => {
       orderRequest: "For Approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
+
+      // ✅ Embed payment info if GCash is used
+      payment:
+        paymentMethod === "Gcash"
+          ? {
+              referenceId,
+              chargeId,
+              amount: paidAmount || totalOrder,
+              status: "PENDING",
+            }
+          : undefined,
     });
 
     const savedOrder = await newOrder.save();
