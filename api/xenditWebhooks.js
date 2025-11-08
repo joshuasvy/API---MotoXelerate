@@ -4,11 +4,24 @@ import Order from "../models/Orders.js";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const { reference_id, status, amount } = req.body;
   console.log("📦 Incoming webhook payload:", req.body);
 
-  if (!reference_id || !status) {
-    return res.status(400).send("Missing reference_id or status");
+  // Defensive input validation
+  if (!req.body || typeof req.body !== "object") {
+    console.warn("⚠️ Invalid webhook body:", req.body);
+    return res.status(400).send("Invalid webhook payload");
+  }
+
+  const { reference_id, status, amount } = req.body;
+
+  if (!reference_id || typeof reference_id !== "string") {
+    console.warn("⚠️ Missing or invalid reference_id:", reference_id);
+    return res.status(400).send("Missing or invalid reference_id");
+  }
+
+  if (!status || typeof status !== "string") {
+    console.warn("⚠️ Missing or invalid status:", status);
+    return res.status(400).send("Missing or invalid status");
   }
 
   const normalizedStatus =
@@ -18,6 +31,9 @@ router.post("/", async (req, res) => {
       ? "Failed"
       : "Pending";
 
+  console.log("🔍 Normalized status:", normalizedStatus);
+  console.log("💰 Incoming amount:", amount);
+
   try {
     const updated = await Order.findOneAndUpdate(
       { "payment.referenceId": reference_id },
@@ -26,7 +42,8 @@ router.post("/", async (req, res) => {
         "payment.amount": amount,
         "payment.paidAt": new Date(),
         status: normalizedStatus,
-      }
+      },
+      { new: true }
     );
 
     if (!updated) {
@@ -34,10 +51,16 @@ router.post("/", async (req, res) => {
       return res.status(404).send("Order not found");
     }
 
-    console.log("✅ Payment + Order status updated:", reference_id, status);
+    console.log("✅ Order updated:", {
+      orderId: updated._id,
+      referenceId: reference_id,
+      status: normalizedStatus,
+    });
+
     res.status(200).send("Webhook received");
   } catch (err) {
-    console.error("❌ Webhook error:", err.message);
+    console.error("❌ Webhook processing error:", err.message);
+    console.error("🧨 Full error object:", err);
     res.status(500).send("Error processing webhook");
   }
 });
