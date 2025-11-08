@@ -211,6 +211,7 @@ router.get("/:id", async (req, res) => {
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentStatus: order.payment?.status ?? "N/A", // ✅ Explicit status
+      paymentMethod: order.paymentMethod ?? "N/A", // ✅ Add this line
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
       items: order.items.map((item, index) => {
