@@ -49,7 +49,7 @@ router.post("/", async (req, res) => {
       referenceId,
       chargeId: response.data.id,
       amount,
-      status: "PENDING",
+      status: "Pending",
     });
 
     res.json({
