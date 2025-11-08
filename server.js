@@ -9,6 +9,7 @@ import productRoutes from "./api/product.js";
 import cartRoutes from "./api/cart.js";
 import orderRoutes from "./api/order.js";
 import xenditGcashRoutes from "./api/xenditGcash.js";
+import xenditWebhooks from "./api/xenditWebhooks.js";
 
 dotenv.config();
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/product", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/gcash", xenditGcashRoutes);
+app.use("/api/webhooks", xenditWebhooks);
 // 404 handler
 app.use((req, res) => {
   console.log("❌ 404 hit:", req.method, req.originalUrl);

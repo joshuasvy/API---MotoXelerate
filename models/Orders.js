@@ -9,7 +9,7 @@ const orderItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   status: {
     type: String,
-    enum: ["For approval", "To ship", "Ship", "Completed", "Delivered"],
+    enum: ["For approval", "To ship", "Ship", "Delivered", "Completed"],
     default: "For approval",
   },
 });
@@ -43,6 +43,19 @@ const orderSchema = new mongoose.Schema(
     orderDate: { type: Date, default: Date.now },
     deliveryAddress: { type: String },
     notes: { type: String },
+
+    // ✅ Embedded payment tracking
+    payment: {
+      referenceId: { type: String, unique: true },
+      chargeId: { type: String },
+      amount: { type: Number, required: true }, // Actual amount charged
+      status: {
+        type: String,
+        enum: ["Pending", "Succeeded", "Failed"],
+        default: "Pending",
+      },
+      paidAt: { type: Date },
+    },
   },
   { timestamps: true }
 );
