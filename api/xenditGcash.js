@@ -58,9 +58,9 @@ router.post("/", async (req, res) => {
     callback_url: callbackUrl,
   };
 
-  try {
-    console.log("🚀 Sending charge payload:", JSON.stringify(payload, null, 2));
+  console.log("🚀 Sending charge payload:", JSON.stringify(payload, null, 2));
 
+  try {
     const response = await axios.post(
       "https://api.xendit.co/ewallets/charges",
       payload,
