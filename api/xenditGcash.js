@@ -83,8 +83,8 @@ router.post("/", async (req, res) => {
       JSON.stringify(response.data, null, 2)
     );
 
-    if (response.status !== 201) {
-      throw new Error("Failed to create GCash charge");
+    if (![200, 201, 202].includes(response.status)) {
+      throw new Error(`Unexpected response status: ${response.status}`);
     }
 
     res.json({
