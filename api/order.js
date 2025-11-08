@@ -91,6 +91,7 @@ router.post("/", async (req, res) => {
               chargeId,
               amount: paidAmount || totalOrder,
               status: "Pending",
+              paidAt: null,
             }
           : undefined,
     });
