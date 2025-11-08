@@ -8,14 +8,17 @@ router.post("/", async (req, res) => {
 
   const xenditKey = process.env.XENDIT_GCASH_API;
   if (!xenditKey) {
+    console.error("❌ Missing XENDIT_GCASH_API");
     throw new Error("Missing XENDIT_GCASH_API in environment variables");
   }
 
   // ✅ Define your webhook endpoint (must match your deployed backend route)
-  // const callbackUrl =
-  //   "https://api-motoxelerate.onrender.com/api/xenditWebhooks";
+  const callbackUrl =
+    "https://api-motoxelerate.onrender.com/api/xenditWebhooks";
 
   const referenceId = `gcash-${Date.now()}-${userId}`;
+
+  console.log("💰 Sending amount:", amount);
 
   const payload = {
     reference_id: referenceId,
@@ -27,7 +30,7 @@ router.post("/", async (req, res) => {
       success_redirect_url: "myapp://gcash-success",
       failure_redirect_url: "myapp://gcash-failure",
     },
-    callback_url: "https://api-motoxelerate.onrender.com/api/xenditWebhooks", // ✅ Correct placement
+    callback_url: callbackUrl, // ✅ Correct placement
   };
 
   try {
