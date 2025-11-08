@@ -12,8 +12,8 @@ router.post("/", async (req, res) => {
   }
 
   // ✅ Define your webhook endpoint (must match your deployed backend route)
-  const callbackUrl =
-    "https://api-motoxelerate.onrender.com/api/xenditWebhooks";
+  // const callbackUrl =
+  //   "https://api-motoxelerate.onrender.com/api/xenditWebhooks";
 
   const referenceId = `gcash-${Date.now()}-${userId}`;
 
@@ -27,7 +27,7 @@ router.post("/", async (req, res) => {
       success_redirect_url: "myapp://gcash-success",
       failure_redirect_url: "myapp://gcash-failure",
     },
-    callback_url: callbackUrl, // ✅ Correct placement
+    callback_url: "https://api-motoxelerate.onrender.com/api/xenditWebhooks", // ✅ Correct placement
   };
 
   try {
@@ -63,7 +63,7 @@ router.post("/", async (req, res) => {
       paid_amount: amount,
     });
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error("❌ Xendit error:", err.response?.data || err.message);
     res.status(500).json({ error: "GCash payment failed" });
   }
 });
