@@ -45,12 +45,10 @@ router.post("/", async (req, res) => {
       }
     );
 
-    // ✅ Save referenceId for later verification
-    await savePaymentReference({
+    console.log("📌 GCash charge created:", {
       referenceId,
-      userId,
-      amount,
       chargeId: response.data.id,
+      amount,
       status: "PENDING",
     });
 
