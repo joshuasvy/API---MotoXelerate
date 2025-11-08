@@ -38,6 +38,12 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/gcash", xenditGcashRoutes);
 app.use("/api/webhooks", xenditWebhooks);
+
+app.post("/api/gcash/webhook", (req, res) => {
+  console.log("📦 Incoming mock webhook (hardcoded):", req.body);
+  res.status(200).send("Mock webhook received");
+});
+
 // 404 handler
 app.use((req, res) => {
   console.log("❌ 404 hit:", req.method, req.originalUrl);
