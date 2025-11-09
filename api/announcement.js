@@ -93,4 +93,20 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.post("/delete-many", async (req, res) => {
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "No announcement IDs provided." });
+  }
+
+  try {
+    const result = await Announcement.deleteMany({ _id: { $in: ids } });
+    res.status(200).json({ deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error("❌ Failed to delete announcements:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default router;
