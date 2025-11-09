@@ -251,7 +251,10 @@ router.get("/:id", async (req, res) => {
       paymentMethod: order.paymentMethod,
     });
 
-    res.status(200).json(formatted);
+    res.status(200).json({
+      ...formatted,
+      payment: order.payment,
+    });
   } catch (err) {
     console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
