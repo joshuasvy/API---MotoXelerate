@@ -104,7 +104,7 @@ router.post("/delete-many", async (req, res) => {
   }
 
   try {
-    const result = await Announcement.deleteMany({ _id: { $in: ids } });
+    const result = await Announcements.deleteMany({ _id: { $in: ids } });
     console.log(`✅ Deleted ${result.deletedCount} announcements`);
     res.status(200).json({ deletedCount: result.deletedCount });
   } catch (err) {
