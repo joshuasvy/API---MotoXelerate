@@ -94,18 +94,22 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/delete-many", async (req, res) => {
+  console.log("🔍 Incoming delete-many request:", req.body);
+
   const { ids } = req.body;
 
   if (!Array.isArray(ids) || ids.length === 0) {
+    console.warn("⚠️ Invalid or empty 'ids' array");
     return res.status(400).json({ error: "No announcement IDs provided." });
   }
 
   try {
     const result = await Announcement.deleteMany({ _id: { $in: ids } });
+    console.log(`✅ Deleted ${result.deletedCount} announcements`);
     res.status(200).json({ deletedCount: result.deletedCount });
   } catch (err) {
-    console.error("❌ Failed to delete announcements:", err.message);
-    res.status(500).json({ error: "Server error" });
+    console.error("❌ Error during deletion:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
