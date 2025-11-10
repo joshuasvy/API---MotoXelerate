@@ -1,5 +1,6 @@
 import express from "express";
 import Order from "../models/Orders.js";
+import Product from "../models/Product.js"; // ✅ Required for stock restoration
 
 const router = express.Router();
 
@@ -29,6 +30,14 @@ router.post("/", async (req, res) => {
     s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
   const normalizedStatus = capitalize(status); // "SUCCEEDED" → "Succeeded"
 
+  const statusMap = {
+    Succeeded: "Processing",
+    Failed: "Payment Failed",
+    Expired: "Payment Expired",
+  };
+
+  const orderStatus = statusMap[normalizedStatus] || "Pending";
+
   console.log("🔍 Normalized status:", normalizedStatus);
   console.log("💰 Incoming amount:", amount);
 
@@ -40,7 +49,7 @@ router.post("/", async (req, res) => {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
           "payment.paidAt": new Date(),
-          status: normalizedStatus,
+          status: orderStatus,
         },
       },
       { new: true }
@@ -49,6 +58,18 @@ router.post("/", async (req, res) => {
     if (!updated) {
       console.warn("⚠️ No matching order for reference_id:", reference_id);
       return res.status(404).send("Order not found");
+    }
+
+    // ✅ Restore stock if payment failed or expired
+    if (
+      ["Failed", "Expired"].includes(normalizedStatus) &&
+      Array.isArray(updated.items)
+    ) {
+      for (const item of updated.items) {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { stock: item.quantity },
+        });
+      }
     }
 
     console.log("✅ Order updated:", {
@@ -60,7 +81,6 @@ router.post("/", async (req, res) => {
     res.status(200).send("Webhook received");
   } catch (err) {
     console.error("❌ Webhook processing error:", err.message);
-    console.error("🧨 Full error object:", err);
     res.status(500).send("Error processing webhook");
   }
 });
