@@ -4,12 +4,14 @@ import Order from "../models/Orders.js"; // ✅ Singular model name
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Users from "../models/Users.js";
+import StockLog from "../models/StockLog.js";
 
 const router = express.Router();
 
 // 🛒 Create a new order
 router.post("/", async (req, res) => {
   console.log("🧪 Incoming payload:", req.body);
+
   const {
     userId,
     selectedItems,
@@ -17,9 +19,9 @@ router.post("/", async (req, res) => {
     paymentMethod,
     deliveryAddress,
     notes,
-    referenceId, // ✅ Add this from frontend or GCash charge route
-    chargeId, // ✅ Add this from Xendit response
-    paidAmount, // ✅ Add this from Xendit charge payload
+    referenceId,
+    chargeId,
+    paidAmount,
   } = req.body;
 
   if (
@@ -32,22 +34,21 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const user = await Users.findById(userId);
+    const user = await Users.findById(userId).session(session);
     if (!user) {
-      console.log("❌ User not found:", userId);
-      return res.status(404).json({ error: "User not found." });
+      throw new Error(`User not found: ${userId}`);
     }
 
     const orderItems = [];
 
     for (const item of selectedItems) {
-      const product = await Product.findById(item.product);
+      const product = await Product.findById(item.product).session(session);
       if (!product) {
-        console.log("❌ Product not found:", item.product);
-        return res
-          .status(404)
-          .json({ error: `Product not found: ${item.product}` });
+        throw new Error(`Product not found: ${item.product}`);
       }
 
       const requiredFields = ["productName", "price", "image", "category"];
@@ -55,16 +56,28 @@ router.post("/", async (req, res) => {
         (field) => product[field] === undefined || product[field] === null
       );
       if (missing.length > 0) {
-        console.log(
-          `❌ Product missing fields: ${missing.join(", ")}`,
-          product
+        throw new Error(
+          `Product ${product._id} is missing fields: ${missing.join(", ")}`
         );
-        return res.status(400).json({
-          error: `Product ${
-            product._id
-          } is missing required fields: ${missing.join(", ")}`,
-        });
       }
+
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${product.productName}`);
+      }
+
+      // ✅ Atomic stock decrement
+      product.stock -= item.quantity;
+      await product.save({ session });
+
+      await StockLog.create(
+        {
+          productId: product._id,
+          orderId: newOrder._id, // or savedOrder._id if already saved
+          change: -item.quantity,
+          reason: "Order",
+        },
+        { session }
+      );
 
       orderItems.push({
         product: product._id,
@@ -82,8 +95,6 @@ router.post("/", async (req, res) => {
       orderRequest: "For Approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
-
-      // ✅ Embed payment info if GCash is used
       payment:
         paymentMethod === "Gcash"
           ? {
@@ -96,8 +107,7 @@ router.post("/", async (req, res) => {
           : undefined,
     });
 
-    const savedOrder = await newOrder.save();
-    console.log("✅ Order saved:", savedOrder._id);
+    const savedOrder = await newOrder.save({ session });
 
     await Cart.findOneAndUpdate(
       { userId },
@@ -108,11 +118,17 @@ router.post("/", async (req, res) => {
           },
         },
       },
-      { new: true }
+      { new: true, session }
     );
 
+    await session.commitTransaction();
+    session.endSession();
+
+    console.log("✅ Order saved:", savedOrder._id);
     res.status(201).json(savedOrder);
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("❌ Error during checkout:", err);
     res.status(500).json({ error: err.message });
   }
