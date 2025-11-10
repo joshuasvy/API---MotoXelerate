@@ -87,7 +87,16 @@ router.get("/product/:productId", async (req, res) => {
 
     const reviews = await Reviews.find({ productId })
       .sort({ createdAt: -1 })
-      // .populate("userId", "firstName lastName image");
+      .populate("userId", "firstName lastName image");
+
+    reviews.forEach((r, i) => {
+      console.log(`🔍 Review ${i + 1}:`, {
+        reviewId: r._id,
+        userId: r.userId?._id,
+        firstName: r.userId?.firstName,
+        image: r.userId?.image,
+      });
+    });
 
     console.log(`✅ Found ${reviews.length} reviews`);
     res.json(reviews);
