@@ -80,16 +80,16 @@ router.get("/product/:productId", async (req, res) => {
     const { productId } = req.params;
     console.log("🔍 Fetching reviews for product:", productId);
 
-    if (!productId) {
-      console.warn("⚠️ Missing productId in request params.");
-      return res.status(400).json({ message: "Missing productId." });
+    if (!productId || productId.length !== 24) {
+      console.warn("⚠️ Invalid productId format:", productId);
+      return res.status(400).json({ message: "Invalid productId." });
     }
 
     const reviews = await Reviews.find({ productId })
       .sort({ createdAt: -1 })
-      .populate("userId", "firstName lastName image");
+      // .populate("userId", "firstName lastName image");
 
-    console.log(`✅ Found ${reviews.length} reviews for product ${productId}`);
+    console.log(`✅ Found ${reviews.length} reviews`);
     res.json(reviews);
   } catch (err) {
     console.error("❌ Failed to fetch reviews:", {
