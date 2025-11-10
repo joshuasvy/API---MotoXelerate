@@ -118,15 +118,22 @@ router.post("/", async (req, res) => {
   }
 });
 
-// 📦 Get all orders
+// 📦 Get all orders or filter by userId and status
 router.get("/", async (req, res) => {
+  const { userId, status } = req.query;
+
+  const filter = {};
+  if (userId) filter.user = userId;
+  if (status) filter.status = status.toLowerCase();
+
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
     res.status(200).json(orders);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Failed to fetch orders", error: err.message });
+    res.status(500).json({
+      message: "Failed to fetch orders",
+      error: err.message,
+    });
   }
 });
 
