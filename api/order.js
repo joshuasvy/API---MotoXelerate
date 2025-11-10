@@ -102,16 +102,29 @@ router.post("/", async (req, res) => {
 
     // ✅ Now that savedOrder exists, log stock changes
     for (const item of selectedItems) {
-      try {
-        await StockLog.create(
-          {
-            productId: item.product,
-            orderId: savedOrder._id,
-            change: -item.quantity,
-            reason: "Order",
-          },
-          { session }
+      const logEntry = {
+        productId: item.product,
+        orderId: savedOrder?._id,
+        change: -Math.abs(item.quantity || 0),
+        reason: "Order",
+      };
+
+      const missingFields = Object.entries(logEntry)
+        .filter(([_, value]) => value === undefined || value === null)
+        .map(([key]) => key);
+
+      if (missingFields.length > 0) {
+        console.warn(
+          "⚠️ Skipping StockLog entry due to missing fields:",
+          missingFields,
+          logEntry
         );
+        continue;
+      }
+
+      try {
+        console.log("📦 Creating StockLog entry:", logEntry);
+        await StockLog.create([logEntry], { session });
       } catch (logErr) {
         console.warn("⚠️ Failed to log stock change:", logErr.message);
       }
