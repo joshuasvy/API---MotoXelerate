@@ -30,7 +30,7 @@ router.post("/", async (req, res) => {
     !Array.isArray(selectedItems) ||
     selectedItems.length === 0
   ) {
-    console.log("⚠️ Missing or invalid checkout data");
+    console.warn("⚠️ Missing or invalid checkout data");
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
 
@@ -69,16 +69,6 @@ router.post("/", async (req, res) => {
       product.stock -= item.quantity;
       await product.save({ session });
 
-      await StockLog.create(
-        {
-          productId: product._id,
-          orderId: newOrder._id, // or savedOrder._id if already saved
-          change: -item.quantity,
-          reason: "Order",
-        },
-        { session }
-      );
-
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
@@ -108,6 +98,24 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
+    console.log("✅ Order saved:", savedOrder._id);
+
+    // ✅ Now that savedOrder exists, log stock changes
+    for (const item of selectedItems) {
+      try {
+        await StockLog.create(
+          {
+            productId: item.product,
+            orderId: savedOrder._id,
+            change: -item.quantity,
+            reason: "Order",
+          },
+          { session }
+        );
+      } catch (logErr) {
+        console.warn("⚠️ Failed to log stock change:", logErr.message);
+      }
+    }
 
     await Cart.findOneAndUpdate(
       { userId },
@@ -124,7 +132,6 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    console.log("✅ Order saved:", savedOrder._id);
     res.status(201).json(savedOrder);
   } catch (err) {
     await session.abortTransaction();
