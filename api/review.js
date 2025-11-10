@@ -109,4 +109,35 @@ router.get("/product/:productId", async (req, res) => {
   }
 });
 
+router.get("/stats", async (req, res) => {
+  try {
+    const stats = await Reviews.aggregate([
+      {
+        $group: {
+          _id: "$productId",
+          average: { $avg: "$rate" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          productId: "$_id",
+          average: { $round: ["$average", 1] },
+          count: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    console.log("📊 Review stats generated:", stats);
+    res.json(stats);
+  } catch (err) {
+    console.error("❌ Failed to generate review stats:", {
+      message: err.message,
+      stack: err.stack,
+    });
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
 export default router;
