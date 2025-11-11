@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
+import Orders from "../models/Orders.js";
 
 const router = express.Router();
 dotenv.config();
@@ -230,6 +231,40 @@ router.get("/users", async (req, res) => {
   } catch (err) {
     console.error("❌ Failed to fetch users:", err.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/:userId/order-updates", async (req, res) => {
+  const { userId } = req.params;
+
+  // Validate userId format
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.warn(`[WARN] Invalid userId format: ${userId}`);
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+
+  try {
+    console.log(`[INFO] Fetching order updates for userId: ${userId}`);
+
+    const updates = await Order.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("orderId status updatedAt");
+
+    if (!updates || updates.length === 0) {
+      console.log(`[INFO] No order updates found for userId: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    console.log(
+      `[INFO] Found ${updates.length} order updates for userId: ${userId}`
+    );
+    res.json(updates);
+  } catch (err) {
+    console.error(
+      `[ERROR] Failed to fetch order updates for userId: ${userId}`,
+      err
+    );
+    res.status(500).json({ error: "Failed to fetch order updates" });
   }
 });
 
