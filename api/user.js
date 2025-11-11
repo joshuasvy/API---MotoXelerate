@@ -294,4 +294,20 @@ router.get("/:userId/unread-count", async (req, res) => {
   }
 });
 
+router.put("/:userId/mark-read", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const result = await Orders.updateMany(
+      { userId },
+      { $set: { "items.$[].read": true } }
+    );
+
+    res.json({ success: true, modified: result.modifiedCount });
+  } catch (err) {
+    console.error("[ERROR] Failed to mark notifications as read", err);
+    res.status(500).json({ error: "Failed to mark notifications as read" });
+  }
+});
+
 export default router;
