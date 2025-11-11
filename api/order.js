@@ -226,6 +226,7 @@ router.get("/user/:userId", async (req, res) => {
             image: product.image,
             quantity: item.quantity,
             status: item.status,
+            read: item.read ?? false, // ✅ preserve read state
           };
         })
         .filter(Boolean),
