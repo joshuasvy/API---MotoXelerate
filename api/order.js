@@ -136,10 +136,18 @@ router.post("/", async (req, res) => {
       strictPopulate: false,
     });
 
-    if (!confirmed || !Array.isArray(confirmed.items)) {
-      console.warn("⚠️ Confirmed order missing items array:", confirmed);
-    } else {
-      console.log("🔍 Confirmed saved order items:", confirmed.items);
+    if (!confirmed) {
+      console.warn("❌ Failed to retrieve confirmed order:", savedOrder._id);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(500).json({ error: "Failed to retrieve saved order" });
+    }
+
+    if (!Array.isArray(confirmed.items)) {
+      console.warn(
+        "⚠️ Confirmed order has malformed items array:",
+        confirmed.items
+      );
     }
 
     console.log("✅ Order saved:", savedOrder._id);
