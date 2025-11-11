@@ -251,7 +251,7 @@ router.get("/:userId/order-updates", async (req, res) => {
       .select("_id updatedAt items") // include order ID and items
       .populate({
         path: "items.product",
-        select: "productName image", // include product name and image
+        select: "_id productName image", // include product name and image
       });
 
     if (!updates || updates.length === 0) {
