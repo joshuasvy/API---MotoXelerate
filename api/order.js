@@ -188,7 +188,9 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.status(201).json(savedOrder);
+    console.log("🧾 Final response order:", confirmed.items);
+
+    res.status(201).json(confirmed);
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -235,6 +237,11 @@ router.get("/user/:userId", async (req, res) => {
         strictPopulate: false,
       });
 
+    console.log(
+      "🧾 Raw items from DB:",
+      orders.map((o) => o.items)
+    ); // ✅ PASTE HERE
+
     if (!orders || orders.length === 0) {
       console.warn("⚠️ No orders found for user:", userId);
       return res.status(200).json([]);
@@ -269,7 +276,7 @@ router.get("/user/:userId", async (req, res) => {
               image: product.image,
               quantity: item.quantity,
               status: item.status,
-              read: item.read ?? false,
+              read: item.read === false ? false : true, // ✅ force correct read logic
             };
           })
           .filter(Boolean);
