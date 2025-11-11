@@ -272,4 +272,26 @@ router.get("/:userId/order-updates", async (req, res) => {
   }
 });
 
+router.get("/:userId/unread-count", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+
+  try {
+    const orders = await Order.find({ userId });
+
+    let unreadCount = 0;
+    for (const order of orders) {
+      unreadCount += order.items.filter((item) => item.read === false).length;
+    }
+
+    res.json({ unreadCount });
+  } catch (err) {
+    console.error(`[ERROR] Failed to count unread notifications:`, err);
+    res.status(500).json({ error: "Failed to count unread notifications" });
+  }
+});
+
 export default router;
