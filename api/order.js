@@ -76,6 +76,7 @@ router.post("/", async (req, res) => {
         read: false, // ✅ force unread
       });
     }
+    console.log("🧾 Final orderItems before save:", orderItems);
 
     const newOrder = new Order({
       userId,
