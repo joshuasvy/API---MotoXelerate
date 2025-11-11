@@ -232,6 +232,8 @@ router.get("/user/:userId", async (req, res) => {
         .filter(Boolean),
     }));
 
+    console.log("🧾 Final formattedOrders:", formattedOrders);
+
     res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
