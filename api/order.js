@@ -112,18 +112,11 @@ router.post("/", async (req, res) => {
         .json({ error: "Order save failed or _id missing" });
     }
 
-    // 🛠 Bulletproof patch: forcibly reset all item.read flags to false
-    try {
-      for (let i = 0; i < savedOrder.items.length; i++) {
-        await Order.updateOne(
-          { _id: savedOrder._id },
-          { $set: { [`items.${i}.read`]: false } }
-        );
-        console.log(`✅ Patched items[${i}].read to false`);
-      }
-    } catch (patchErr) {
-      console.warn("⚠️ Failed to patch read flags:", patchErr.message);
-    }
+    // ✅ Safe patch: update read flags using .save()
+    savedOrder.items.forEach((item) => {
+      item.read = false;
+    });
+    await savedOrder.save({ session });
 
     const confirmed = await Order.findById(savedOrder._id).populate({
       path: "items.product",
