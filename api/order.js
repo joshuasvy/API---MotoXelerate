@@ -114,17 +114,13 @@ router.post("/", async (req, res) => {
 
     // 🛠 Bulletproof patch: forcibly reset all item.read flags to false
     try {
-      await Order.updateOne(
-        { _id: savedOrder._id },
-        {
-          $set: {
-            items: savedOrder.items.map((item) => ({
-              ...item.toObject(),
-              read: false,
-            })),
-          },
-        }
-      );
+      for (let i = 0; i < savedOrder.items.length; i++) {
+        await Order.updateOne(
+          { _id: savedOrder._id },
+          { $set: { [`items.${i}.read`]: false } }
+        );
+        console.log(`✅ Patched items[${i}].read to false`);
+      }
     } catch (patchErr) {
       console.warn("⚠️ Failed to patch read flags:", patchErr.message);
     }
