@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import Users from "../models/Users.js";
 import { authToken } from "../middleware/authToken.js";
 import bcrypt from "bcrypt";
