@@ -123,12 +123,14 @@ router.post("/", async (req, res) => {
       console.warn("⚠️ Failed to patch read flags:", patchErr.message);
     }
 
-    const confirmed = await Order.findById(savedOrder._id).populate({
-      path: "items.product",
-      model: "Product",
-      select: "productName specification price image",
-      strictPopulate: false,
-    });
+    const confirmed = await Order.findById(savedOrder._id)
+      .session(session)
+      .populate({
+        path: "items.product",
+        model: "Product",
+        select: "productName specification price image",
+        strictPopulate: false,
+      });
 
     if (!confirmed) {
       console.warn("❌ Failed to retrieve confirmed order:", savedOrder._id);
