@@ -247,7 +247,7 @@ router.get("/:userId/order-updates", async (req, res) => {
   try {
     console.log(`[INFO] Fetching order updates for userId: ${userId}`);
 
-    const updates = await Order.find({ userId })
+    const updates = await Orders.find({ userId })
       .sort({ updatedAt: -1 })
       .select("orderId status updatedAt");
 
