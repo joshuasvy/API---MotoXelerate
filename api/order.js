@@ -65,7 +65,6 @@ router.post("/", async (req, res) => {
         throw new Error(`Insufficient stock for ${product.productName}`);
       }
 
-      // ✅ Atomic stock decrement
       product.stock -= item.quantity;
       await product.save({ session });
 
@@ -73,9 +72,10 @@ router.post("/", async (req, res) => {
         product: product._id,
         quantity: item.quantity,
         status: "For approval",
-        read: false, // ✅ force unread
+        read: false,
       });
     }
+
     console.log("🧾 Final orderItems before save:", orderItems);
 
     const newOrder = new Order({
@@ -99,10 +99,14 @@ router.post("/", async (req, res) => {
           : undefined,
     });
 
+    console.log("🧩 newOrder before save:", newOrder);
+
     const savedOrder = await newOrder.save({ session });
 
     if (!savedOrder || !savedOrder._id) {
       console.warn("⚠️ Order save failed or _id missing:", savedOrder);
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(500)
         .json({ error: "Order save failed or _id missing" });
@@ -118,15 +122,18 @@ router.post("/", async (req, res) => {
     }
 
     const confirmed = await Order.findById(savedOrder._id);
-    console.log("🔍 Confirmed saved order items:", confirmed.items);
+    if (!confirmed || !Array.isArray(confirmed.items)) {
+      console.warn("⚠️ Confirmed order missing items array:", confirmed);
+    } else {
+      console.log("🔍 Confirmed saved order items:", confirmed.items);
+    }
 
     console.log("✅ Order saved:", savedOrder._id);
 
-    // ✅ Now that savedOrder exists, log stock changes
     for (const item of selectedItems) {
       const logEntry = {
         productId: item.product,
-        orderId: savedOrder?._id,
+        orderId: savedOrder._id,
         change: -Math.abs(item.quantity || 0),
         reason: "Order",
       };
