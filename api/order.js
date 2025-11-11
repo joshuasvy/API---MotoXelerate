@@ -100,6 +100,14 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
+    await Order.updateOne(
+      { _id: savedOrder._id },
+      { $set: { "items.$[].read": false } }
+    );
+
+    const confirmed = await Order.findById(savedOrder._id);
+    console.log("🔍 Confirmed saved order items:", confirmed.items);
+
     console.log("✅ Order saved:", savedOrder._id);
 
     // ✅ Now that savedOrder exists, log stock changes
