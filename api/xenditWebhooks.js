@@ -60,6 +60,14 @@ router.post("/", async (req, res) => {
       return res.status(404).send("Order not found");
     }
 
+    // 🛡️ Defensive log for unexpected structure
+    if (!Array.isArray(updated.items)) {
+      console.warn("⚠️ Order found but items is not an array:", {
+        orderId: updated._id,
+        items: updated.items,
+      });
+    }
+
     // ✅ Restore stock if payment failed or expired
     if (
       ["Failed", "Expired"].includes(normalizedStatus) &&

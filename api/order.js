@@ -101,15 +101,21 @@ router.post("/", async (req, res) => {
 
     const savedOrder = await newOrder.save({ session });
 
-    if (!savedOrder) {
-      console.warn("⚠️ Order save failed — savedOrder is null");
-      return res.status(500).json({ error: "Order save failed" });
+    if (!savedOrder || !savedOrder._id) {
+      console.warn("⚠️ Order save failed or _id missing:", savedOrder);
+      return res
+        .status(500)
+        .json({ error: "Order save failed or _id missing" });
     }
 
-    await Order.updateOne(
-      { _id: savedOrder._id },
-      { $set: { "items.$[].read": false } }
-    );
+    try {
+      await Order.updateOne(
+        { _id: savedOrder._id },
+        { $set: { "items.$[].read": false } }
+      );
+    } catch (updateErr) {
+      console.warn("⚠️ Failed to patch read flags:", updateErr.message);
+    }
 
     const confirmed = await Order.findById(savedOrder._id);
     console.log("🔍 Confirmed saved order items:", confirmed.items);
@@ -213,38 +219,53 @@ router.get("/user/:userId", async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const formattedOrders = orders.map((order) => ({
-      orderId: order._id,
-      customerName: order.customerName,
-      orderDate: order.createdAt,
-      totalOrder: order.totalOrder,
-      paymentStatus: order.payment?.status ?? "N/A", // ✅ Explicit status
-      paidAt: order.payment?.paidAt ?? null,
-      deliveryAddress: order.deliveryAddress || "No address provided",
-      notes: order.notes || "",
-      items: order.items
-        .map((item, index) => {
-          const product = item.product;
-          if (!product || typeof product !== "object" || !product._id) {
-            console.warn(
-              `⚠️ Order ${order._id} item[${index}] missing product`
-            );
-            return null;
-          }
+    const formattedOrders = orders
+      .map((order, orderIndex) => {
+        if (!Array.isArray(order.items)) {
+          console.warn(
+            `⚠️ Order ${order._id} has malformed items array:`,
+            order.items
+          );
+          return null;
+        }
 
-          return {
-            productId: product._id,
-            productName: product.productName,
-            specification: product.specification,
-            price: product.price,
-            image: product.image,
-            quantity: item.quantity,
-            status: item.status,
-            read: item.read ?? false, // ✅ preserve read state
-          };
-        })
-        .filter(Boolean),
-    }));
+        const formattedItems = order.items
+          .map((item, itemIndex) => {
+            const product = item.product;
+            if (!product || typeof product !== "object" || !product._id) {
+              console.warn(
+                `⚠️ Order ${order._id} item[${itemIndex}] missing product`,
+                item
+              );
+              return null;
+            }
+
+            return {
+              productId: product._id,
+              productName: product.productName,
+              specification: product.specification,
+              price: product.price,
+              image: product.image,
+              quantity: item.quantity,
+              status: item.status,
+              read: item.read ?? false,
+            };
+          })
+          .filter(Boolean);
+
+        return {
+          orderId: order._id,
+          customerName: order.customerName,
+          orderDate: order.createdAt,
+          totalOrder: order.totalOrder,
+          paymentStatus: order.payment?.status ?? "N/A",
+          paidAt: order.payment?.paidAt ?? null,
+          deliveryAddress: order.deliveryAddress || "No address provided",
+          notes: order.notes || "",
+          items: formattedItems,
+        };
+      })
+      .filter(Boolean);
 
     console.log("🧾 Final formattedOrders:", formattedOrders);
 
