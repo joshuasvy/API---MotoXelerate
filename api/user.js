@@ -238,7 +238,6 @@ router.get("/users", async (req, res) => {
 router.get("/:userId/order-updates", async (req, res) => {
   const { userId } = req.params;
 
-  // Validate userId format
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     console.warn(`[WARN] Invalid userId format: ${userId}`);
     return res.status(400).json({ error: "Invalid user ID" });
@@ -247,9 +246,13 @@ router.get("/:userId/order-updates", async (req, res) => {
   try {
     console.log(`[INFO] Fetching order updates for userId: ${userId}`);
 
-    const updates = await Orders.find({ userId })
+    const updates = await Order.find({ userId })
       .sort({ updatedAt: -1 })
-      .select("orderId status updatedAt");
+      .select("_id updatedAt items") // include order ID and items
+      .populate({
+        path: "items.product",
+        select: "productName image", // include product name and image
+      });
 
     if (!updates || updates.length === 0) {
       console.log(`[INFO] No order updates found for userId: ${userId}`);
