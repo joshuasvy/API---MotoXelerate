@@ -289,6 +289,7 @@ router.get("/:id", async (req, res) => {
           image: product?.image ?? null,
           quantity: item.quantity,
           status: item.status,
+          read: item.read ?? false,
         };
       }),
     };
