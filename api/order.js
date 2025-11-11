@@ -113,10 +113,15 @@ router.post("/", async (req, res) => {
     }
 
     // ✅ Safe patch: update read flags using .save()
-    savedOrder.items.forEach((item) => {
-      item.read = false;
-    });
-    await savedOrder.save({ session });
+    try {
+      savedOrder.items.forEach((item) => {
+        item.read = false;
+      });
+      await savedOrder.save({ session });
+      console.log("✅ Patched all items.read to false via save()");
+    } catch (patchErr) {
+      console.warn("⚠️ Failed to patch read flags:", patchErr.message);
+    }
 
     const confirmed = await Order.findById(savedOrder._id).populate({
       path: "items.product",
