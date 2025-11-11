@@ -121,7 +121,13 @@ router.post("/", async (req, res) => {
       console.warn("⚠️ Failed to patch read flags:", updateErr.message);
     }
 
-    const confirmed = await Order.findById(savedOrder._id);
+    const confirmed = await Order.findById(savedOrder._id).populate({
+      path: "items.product",
+      model: "Product",
+      select: "productName specification price image",
+      strictPopulate: false,
+    });
+
     if (!confirmed || !Array.isArray(confirmed.items)) {
       console.warn("⚠️ Confirmed order missing items array:", confirmed);
     } else {
