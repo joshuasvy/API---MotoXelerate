@@ -192,7 +192,9 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(confirmed);
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
     console.error("❌ Error during checkout:", err);
     res.status(500).json({ error: err.message });
