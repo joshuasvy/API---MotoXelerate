@@ -280,7 +280,7 @@ router.get("/:userId/unread-count", async (req, res) => {
   }
 
   try {
-    const orders = await Order.find({ userId });
+    const orders = await Orders.find({ userId });
 
     let unreadCount = 0;
     for (const order of orders) {
