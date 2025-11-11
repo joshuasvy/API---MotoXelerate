@@ -100,6 +100,12 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
+
+    if (!savedOrder) {
+      console.warn("⚠️ Order save failed — savedOrder is null");
+      return res.status(500).json({ error: "Order save failed" });
+    }
+
     await Order.updateOne(
       { _id: savedOrder._id },
       { $set: { "items.$[].read": false } }
