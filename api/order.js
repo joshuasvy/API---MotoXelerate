@@ -73,6 +73,7 @@ router.post("/", async (req, res) => {
         product: product._id,
         quantity: item.quantity,
         status: "For approval",
+        read: false, // ✅ force unread
       });
     }
 
