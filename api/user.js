@@ -281,7 +281,19 @@ router.get("/:userId/unread-count", async (req, res) => {
     const allOrders = await Orders.find({
       userId,
       "payment.status": "Succeeded",
-      items: { $elemMatch: { status: "For approval" } },
+      items: {
+        $elemMatch: {
+          status: {
+            $in: [
+              "For approval",
+              "To ship",
+              "Shipped",
+              "Delivered",
+              "Completed",
+            ],
+          },
+        },
+      },
     }).select("_id");
 
     if (!allOrders || allOrders.length === 0) {
