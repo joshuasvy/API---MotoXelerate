@@ -1,13 +1,12 @@
 import express from "express";
 import Order from "../models/Orders.js";
-import Product from "../models/Product.js"; // ✅ Required for stock restoration
+import Product from "../models/Product.js";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   console.log("📦 Incoming webhook payload:", req.body);
 
-  // Defensive input validation
   if (!req.body || typeof req.body !== "object") {
     console.warn("⚠️ Invalid webhook body:", req.body);
     return res.status(400).send("Invalid webhook payload");
@@ -25,10 +24,9 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Missing or invalid status");
   }
 
-  // ✅ Normalize status to capitalized form
   const capitalize = (s) =>
     s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  const normalizedStatus = capitalize(status); // "SUCCEEDED" → "Succeeded"
+  const normalizedStatus = capitalize(status);
 
   const statusMap = {
     Succeeded: "Processing",
@@ -60,7 +58,6 @@ router.post("/", async (req, res) => {
       return res.status(404).send("Order not found");
     }
 
-    // 🛡️ Defensive log for unexpected structure
     if (!Array.isArray(updated.items)) {
       console.warn("⚠️ Order found but items is not an array:", {
         orderId: updated._id,
@@ -68,7 +65,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ✅ Restore stock if payment failed or expired
     if (
       ["Failed", "Expired"].includes(normalizedStatus) &&
       Array.isArray(updated.items)

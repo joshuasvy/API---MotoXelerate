@@ -280,33 +280,16 @@ router.get("/:userId/unread-count", async (req, res) => {
   }
 
   try {
-    const orders = await Orders.find({ userId });
-
-    let unreadCount = 0;
-    for (const order of orders) {
-      unreadCount += order.items.filter((item) => item.read === false).length;
-    }
+    const unreadCount = await Orders.countDocuments({
+      userId,
+      "payment.status": "Succeeded",
+      "items.status": "For approval",
+    });
 
     res.json({ unreadCount });
   } catch (err) {
-    console.error(`[ERROR] Failed to count unread notifications:`, err);
-    res.status(500).json({ error: "Failed to count unread notifications" });
-  }
-});
-
-router.put("/:userId/mark-read", async (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    const result = await Orders.updateMany(
-      { userId },
-      { $set: { "items.$[].read": true } }
-    );
-
-    res.json({ success: true, modified: result.modifiedCount });
-  } catch (err) {
-    console.error("[ERROR] Failed to mark notifications as read", err);
-    res.status(500).json({ error: "Failed to mark notifications as read" });
+    console.error("[ERROR] Failed to count unread orders:", err);
+    res.status(500).json({ error: "Failed to count unread orders" });
   }
 });
 
