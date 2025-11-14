@@ -72,7 +72,6 @@ router.post("/", async (req, res) => {
         product: product._id,
         quantity: item.quantity,
         status: "For approval",
-        read: false,
       });
     }
 
@@ -110,17 +109,6 @@ router.post("/", async (req, res) => {
       return res
         .status(500)
         .json({ error: "Order save failed or _id missing" });
-    }
-
-    // ✅ Safe patch: update read flags using .save()
-    try {
-      savedOrder.items.forEach((item) => {
-        item.read = false;
-      });
-      await savedOrder.save({ session });
-      console.log("✅ Patched all items.read to false via save()");
-    } catch (patchErr) {
-      console.warn("⚠️ Failed to patch read flags:", patchErr.message);
     }
 
     const confirmed = await Order.findById(savedOrder._id)

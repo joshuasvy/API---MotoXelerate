@@ -12,11 +12,6 @@ const orderItemSchema = new mongoose.Schema({
     enum: ["For approval", "To ship", "Ship", "Delivered", "Completed"],
     default: "For approval",
   },
-  read: {
-    type: Boolean,
-    default: false,
-    required: true,
-  },
 });
 
 const orderSchema = new mongoose.Schema(
