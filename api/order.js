@@ -5,6 +5,7 @@ import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Users from "../models/Users.js";
 import StockLog from "../models/StockLog.js";
+import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 
@@ -411,7 +412,9 @@ router.put("/:id", async (req, res) => {
     console.log("🔄 Incoming update payload:", items);
     console.log("📦 Existing order items:", order.items);
 
-    order.items.forEach((item, index) => {
+    for (let index = 0; index < order.items.length; index++) {
+      const item = order.items[index];
+
       const productId =
         typeof item.product === "object" && item.product?._id
           ? item.product._id.toString()
@@ -423,13 +426,33 @@ router.put("/:id", async (req, res) => {
 
       if (updatedItem) {
         item.status = updatedItem.status;
+
+        // 🔔 Log status update as unread notification (deduplicated)
+        await NotificationLog.updateOne(
+          {
+            userId: order.userId,
+            orderId: order._id,
+            status: updatedItem.status,
+          },
+          {
+            $setOnInsert: {
+              readAt: null,
+              createdAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+
+        console.log(
+          `🔔 Logged status "${updatedItem.status}" for order ${order._id}`
+        );
       } else {
         console.warn(
           `⚠️ No match for item[${index}] with productId:`,
           productId
         );
       }
-    });
+    }
 
     const updated = await order.save();
     res.status(200).json(updated);
