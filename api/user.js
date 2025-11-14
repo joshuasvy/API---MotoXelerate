@@ -275,21 +275,27 @@ router.get("/:userId/order-updates", async (req, res) => {
 router.get("/:userId/unread-count", async (req, res) => {
   const { userId } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ error: "Invalid user ID" });
-  }
-
   try {
-    const unreadCount = await Orders.countDocuments({
+    const allOrders = await Orders.find({
       userId,
       "payment.status": "Succeeded",
       "items.status": "For approval",
-    });
+    }).select("_id");
+
+    const readLogs = await NotificationLog.find({
+      userId,
+      orderId: { $in: allOrders.map((o) => o._id) },
+    }).select("orderId");
+
+    const readOrderIds = new Set(readLogs.map((log) => log.orderId.toString()));
+    const unreadCount = allOrders.filter(
+      (o) => !readOrderIds.has(o._id.toString())
+    ).length;
 
     res.json({ unreadCount });
   } catch (err) {
-    console.error("[ERROR] Failed to count unread orders:", err);
-    res.status(500).json({ error: "Failed to count unread orders" });
+    console.error("❌ Failed to count unread notifications:", err);
+    res.status(500).json({ error: "Failed to count unread notifications" });
   }
 });
 
