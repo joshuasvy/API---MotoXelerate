@@ -279,8 +279,10 @@ router.get("/:userId/unread-count", async (req, res) => {
     const allOrders = await Orders.find({
       userId,
       "payment.status": "Succeeded",
-      "items.status": "For approval",
+      items: { $elemMatch: { status: "For approval" } },
     }).select("_id");
+    console.log("🔍 Matching orders:", allOrders.length);
+    console.log("🔍 Read logs:", readLogs.length);
 
     const readLogs = await NotificationLog.find({
       userId,
