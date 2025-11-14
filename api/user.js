@@ -276,29 +276,36 @@ router.get("/:userId/unread-count", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    // 🔍 Find all relevant orders with at least one item "For approval"
+    // Step 1: Fetch all relevant orders
     const allOrders = await Orders.find({
       userId,
       "payment.status": "Succeeded",
       items: { $elemMatch: { status: "For approval" } },
     }).select("_id");
 
+    if (!allOrders || allOrders.length === 0) {
+      console.log("📭 No matching orders found");
+      return res.json({ unreadCount: 0 });
+    }
+
     console.log("🔍 Matching orders:", allOrders.length);
 
-    // ✅ Fetch read logs AFTER orders are retrieved
+    // Step 2: Fetch read logs
+    const orderIds = allOrders.map((o) => o._id);
     const readLogs = await NotificationLog.find({
       userId,
-      orderId: { $in: allOrders.map((o) => o._id) },
+      orderId: { $in: orderIds },
     }).select("orderId");
 
     console.log("📘 Read logs found:", readLogs.length);
 
-    // 🧠 Compute unread count
+    // Step 3: Compute unread count
     const readOrderIds = new Set(readLogs.map((log) => log.orderId.toString()));
-    const unreadCount = allOrders.filter(
-      (o) => !readOrderIds.has(o._id.toString())
+    const unreadCount = orderIds.filter(
+      (id) => !readOrderIds.has(id.toString())
     ).length;
 
+    console.log("🔴 Final unread count:", unreadCount);
     res.json({ unreadCount });
   } catch (err) {
     console.error("❌ Failed to count unread notifications:", err);
