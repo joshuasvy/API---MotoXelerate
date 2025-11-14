@@ -395,7 +395,6 @@ router.get("/reference/:referenceId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch order" });
   }
 });
-
 // 🔄 Update item status in an order
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
@@ -407,54 +406,61 @@ router.put("/:id", async (req, res) => {
 
   try {
     const order = await Order.findById(id).populate("items.product");
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) {
+      console.warn(`❌ Order not found for ID: ${id}`);
+      return res.status(404).json({ message: "Order not found" });
+    }
 
     console.log("🔄 Incoming update payload:", items);
-    console.log("📦 Existing order items:", order.items);
+    console.log("📦 Existing order items:", order.items.length);
 
     for (let index = 0; index < order.items.length; index++) {
-      const item = order.items[index];
+      try {
+        const item = order.items[index];
 
-      const productId =
-        typeof item.product === "object" && item.product?._id
-          ? item.product._id.toString()
-          : item.product?.toString();
+        const productId =
+          typeof item.product === "object" && item.product?._id
+            ? item.product._id.toString()
+            : item.product?.toString();
 
-      const updatedItem = items.find(
-        (i) => i.productId.toString() === productId
-      );
+        const updatedItem = items.find(
+          (i) => i.productId.toString() === productId
+        );
 
-      if (updatedItem) {
-        item.status = updatedItem.status;
+        if (updatedItem) {
+          item.status = updatedItem.status;
 
-        // 🔔 Log status update as unread notification (deduplicated)
-        await NotificationLog.updateOne(
-          {
-            userId: order.userId,
-            orderId: order._id,
-            status: updatedItem.status,
-          },
-          {
-            $setOnInsert: {
-              readAt: null,
-              createdAt: new Date(),
+          // 🔔 Log status update as unread notification (deduplicated)
+          await NotificationLog.updateOne(
+            {
+              userId: order.userId,
+              orderId: order._id,
+              status: updatedItem.status,
             },
-          },
-          { upsert: true }
-        );
+            {
+              $setOnInsert: {
+                readAt: null,
+                createdAt: new Date(),
+              },
+            },
+            { upsert: true }
+          );
 
-        console.log(
-          `🔔 Logged status "${updatedItem.status}" for order ${order._id}`
-        );
-      } else {
-        console.warn(
-          `⚠️ No match for item[${index}] with productId:`,
-          productId
-        );
+          console.log(
+            `🔔 Logged status "${updatedItem.status}" for order ${order._id}, item[${index}]`
+          );
+        } else {
+          console.warn(
+            `⚠️ No matching update for item[${index}] with productId: ${productId}`
+          );
+        }
+      } catch (itemErr) {
+        console.error(`❌ Error processing item[${index}]:`, itemErr);
       }
     }
 
     const updated = await order.save();
+    console.log(`✅ Order ${order._id} updated successfully`);
     res.status(200).json(updated);
   } catch (err) {
     console.error("❌ Error updating order status:", err);
