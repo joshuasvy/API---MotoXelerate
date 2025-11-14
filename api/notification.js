@@ -11,7 +11,19 @@ router.put("/:userId/mark-read", async (req, res) => {
     const unreadOrders = await Order.find({
       userId,
       "payment.status": "Succeeded",
-      "items.status": "For approval",
+      items: {
+        $elemMatch: {
+          status: {
+            $in: [
+              "For approval",
+              "To ship",
+              "Shipped",
+              "Delivered",
+              "Completed",
+            ],
+          },
+        },
+      },
     }).select("_id");
 
     const bulkOps = unreadOrders.map((order) => ({
