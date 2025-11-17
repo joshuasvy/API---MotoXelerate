@@ -8,37 +8,13 @@ router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const unreadOrders = await Order.find({
-      userId,
-      "payment.status": "Succeeded",
-      items: {
-        $elemMatch: {
-          status: {
-            $in: [
-              "For approval",
-              "To ship",
-              "Shipped",
-              "Delivered",
-              "Completed",
-            ],
-          },
-        },
-      },
-    }).select("_id");
+    const result = await NotificationLog.updateMany(
+      { userId, readAt: null }, // only unread logs
+      { $set: { readAt: new Date() } }
+    );
 
-    const bulkOps = unreadOrders.map((order) => ({
-      updateOne: {
-        filter: { userId, orderId: order._id },
-        update: { $setOnInsert: { readAt: new Date() } },
-        upsert: true,
-      },
-    }));
-
-    if (bulkOps.length > 0) {
-      await NotificationLog.bulkWrite(bulkOps);
-    }
-
-    res.json({ success: true, marked: bulkOps.length });
+    console.log(`🧹 Marked ${result.modifiedCount} notifications as read`);
+    res.json({ success: true, marked: result.modifiedCount });
   } catch (err) {
     console.error("❌ Failed to mark notifications as read:", err);
     res.status(500).json({ error: "Failed to mark notifications as read" });

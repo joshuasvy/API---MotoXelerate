@@ -8,7 +8,7 @@ const NotificationLogSchema = new mongoose.Schema({
     required: true,
   },
   status: { type: String },
-  readAt: { type: Date, default: Date.now },
+  readAt: { type: Date, default: null },
 });
 
 NotificationLogSchema.index(
