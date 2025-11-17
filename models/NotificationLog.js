@@ -7,6 +7,7 @@ const NotificationLogSchema = new mongoose.Schema({
     ref: "Order",
     required: true,
   },
+  status: { type: String },
   readAt: { type: Date, default: Date.now },
 });
 
