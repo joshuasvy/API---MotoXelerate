@@ -432,18 +432,14 @@ router.put("/:id", async (req, res) => {
 
           // 🔔 Log status update as unread notification (deduplicated)
           await NotificationLog.updateOne(
+            { userId: order.userId, orderId: order._id }, // find existing log
             {
-              userId: order.userId,
-              orderId: order._id,
-              status: updatedItem.status,
-            },
-            {
-              $setOnInsert: {
-                readAt: null,
-                createdAt: new Date(),
+              $set: {
+                status: updatedItem.status, // overwrite with latest status
+                readAt: null, // reset to unread on status change
               },
             },
-            { upsert: true }
+            { upsert: true } // create if it doesn’t exist yet
           );
 
           console.log(

@@ -1,6 +1,5 @@
 import express from "express";
 import NotificationLog from "../models/NotificationLog.js";
-import Order from "../models/Orders.js";
 
 const router = express.Router();
 
@@ -8,8 +7,8 @@ router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const result = await NotificationLog.updateMany(
-      { userId, readAt: null }, // only unread logs
+    await NotificationLog.updateMany(
+      { userId, readAt: null },
       { $set: { readAt: new Date() } }
     );
 
