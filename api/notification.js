@@ -7,7 +7,8 @@ router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    await NotificationLog.updateMany(
+    // ✅ update all unread logs for this user
+    const result = await NotificationLog.updateMany(
       { userId, readAt: null },
       { $set: { readAt: new Date() } }
     );
