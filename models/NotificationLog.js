@@ -11,6 +11,9 @@ const NotificationLogSchema = new mongoose.Schema({
   readAt: { type: Date, default: Date.now },
 });
 
-NotificationLogSchema.index({ userId: 1, orderId: 1 }, { unique: true });
+NotificationLogSchema.index(
+  { userId: 1, orderId: 1, status: 1 },
+  { unique: true }
+);
 
 export default mongoose.model("NotificationLog", NotificationLogSchema);
