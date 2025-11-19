@@ -413,55 +413,48 @@ router.put("/:id", async (req, res) => {
     }
 
     console.log("🔄 Incoming update payload:", items);
-    console.log("📦 Existing order items:", order.items.length);
 
     for (let index = 0; index < order.items.length; index++) {
-      try {
-        const item = order.items[index];
+      const item = order.items[index];
 
-        const productId =
-          typeof item.product === "object" && item.product?._id
-            ? item.product._id.toString()
-            : item.product?.toString();
+      const productId =
+        typeof item.product === "object" && item.product?._id
+          ? item.product._id.toString()
+          : item.product?.toString();
 
-        const updatedItem = items.find(
-          (i) => i.productId.toString() === productId
+      const updatedItem = items.find(
+        (i) => i.productId.toString() === productId
+      );
+
+      if (updatedItem) {
+        item.status = updatedItem.status;
+
+        // 🔔 Log status update as unread notification
+        await NotificationLog.updateOne(
+          { userId: order.userId, orderId: order._id },
+          {
+            $set: {
+              status: updatedItem.status,
+              readAt: null,
+            },
+          },
+          { upsert: true }
         );
 
-        if (updatedItem) {
-          item.status = updatedItem.status;
-
-          // 🔔 Log status update as unread notification (deduplicated)
-          await NotificationLog.updateOne(
-            { userId: order.userId, orderId: order._id },
-            {
-              $set: {
-                status: updatedItem.status,
-                readAt: null,
-              },
-            },
-            { upsert: true }
-          );
-
-          console.log(
-            `🔔 Logged status "${updatedItem.status}" for order ${order._id}, item[${index}]`
-          );
-        } else {
-          console.warn(
-            `⚠️ No matching update for item[${index}] with productId: ${productId}`
-          );
-        }
-      } catch (itemErr) {
-        console.error(`❌ Error processing item[${index}]:`, itemErr);
+        console.log(
+          `🔔 Logged status "${updatedItem.status}" for order ${order._id}, item[${index}]`
+        );
       }
     }
 
-    // ✅ Update main orderRequest status
+    // ✅ Update main orderRequest status if all items are completed
     const allCompleted = order.items.every(
       (item) => item.status === "Completed"
     );
     if (allCompleted) {
       order.orderRequest = "Completed";
+    } else {
+      order.orderRequest = "For Approval"; // or keep other logic if needed
     }
 
     const updated = await order.save();
