@@ -200,7 +200,7 @@ router.get("/", async (req, res) => {
 
   const filter = {};
   if (userId) filter.user = userId;
-  if (status) filter.status = status.toLowerCase();
+  if (status) filter.status = status; // keep exact casing
 
   try {
     const orders = await Order.find(filter).sort({ createdAt: -1 });
