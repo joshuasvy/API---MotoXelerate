@@ -56,6 +56,12 @@ const orderSchema = new mongoose.Schema(
       },
       paidAt: { type: Date, default: null },
     },
+
+    // 👇 New field for notification read state
+    read: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

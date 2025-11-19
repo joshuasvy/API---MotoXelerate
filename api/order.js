@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import express from "express";
-import Order from "../models/Orders.js"; // ✅ Singular model name
+import Order from "../models/Orders.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Users from "../models/Users.js";
@@ -463,6 +463,20 @@ router.put("/:id", async (req, res) => {
   } catch (err) {
     console.error("❌ Error updating order status:", err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+router.patch("/:id/read", async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { read: true },
+      { new: true }
+    );
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json({ message: "Order marked as read", order });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating order", error: err });
   }
 });
 
