@@ -395,6 +395,7 @@ router.get("/reference/:referenceId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch order" });
   }
 });
+
 // 🔄 Update item status in an order
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
@@ -432,14 +433,14 @@ router.put("/:id", async (req, res) => {
 
           // 🔔 Log status update as unread notification (deduplicated)
           await NotificationLog.updateOne(
-            { userId: order.userId, orderId: order._id }, // find existing log
+            { userId: order.userId, orderId: order._id },
             {
               $set: {
-                status: updatedItem.status, // overwrite with latest status
-                readAt: null, // reset to unread on status change
+                status: updatedItem.status,
+                readAt: null,
               },
             },
-            { upsert: true } // create if it doesn’t exist yet
+            { upsert: true }
           );
 
           console.log(
@@ -453,6 +454,14 @@ router.put("/:id", async (req, res) => {
       } catch (itemErr) {
         console.error(`❌ Error processing item[${index}]:`, itemErr);
       }
+    }
+
+    // ✅ Update main orderRequest status
+    const allCompleted = order.items.every(
+      (item) => item.status === "Completed"
+    );
+    if (allCompleted) {
+      order.orderRequest = "Completed";
     }
 
     const updated = await order.save();
