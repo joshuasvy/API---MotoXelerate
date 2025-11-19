@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema(
     },
     orderRequest: {
       type: String,
-      enum: ["For Approval", "Approved", "Rejected"],
+      enum: ["For Approval", "To ship", "Ship", "Delivered", "Completed"], // ✅ now valid
       default: "For Approval",
     },
     orderDate: { type: Date, default: Date.now },
