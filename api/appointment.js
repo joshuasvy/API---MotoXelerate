@@ -108,6 +108,23 @@ router.put("/:id", authToken, async (req, res) => {
   }
 });
 
+// PATCH: mark appointment as read
+router.patch("/:id/read", async (req, res) => {
+  try {
+    const appt = await Appointments.findByIdAndUpdate(
+      req.params.id,
+      { read: true },
+      { new: true }
+    );
+    if (!appt) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+    res.json({ message: "Appointment marked as read", appointment: appt });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating appointment", error: err });
+  }
+});
+
 router.delete("/:id", authToken, async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." });

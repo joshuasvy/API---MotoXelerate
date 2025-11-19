@@ -3,24 +3,33 @@ import mongoose from "mongoose";
 const toProperCase = (str = "") =>
   str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
-const appointmentSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Users",
-    required: true,
+const appointmentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Users",
+      required: true,
+    },
+    customer_Name: { type: String, required: true },
+    service_Type: { type: String, required: true },
+    mechanic: { type: String, default: "" },
+    date: { type: Date, required: true },
+    time: { type: String, required: true },
+    service_Charge: { type: Number, required: true },
+    status: {
+      type: String,
+      default: "Pending",
+      enum: ["Pending", "Confirmed", "Completed", "Cancelled"],
+    },
+
+    // 👇 New field for notification read state
+    read: {
+      type: Boolean,
+      default: false,
+    },
   },
-  customer_Name: { type: String, required: true },
-  service_Type: { type: String, required: true },
-  mechanic: { type: String, default: "" },
-  date: { type: Date, required: true },
-  time: { type: String, required: true },
-  service_Charge: { type: Number, required: true },
-  status: {
-    type: String,
-    default: "Pending", // 👈 normalized default
-    enum: ["Pending", "Confirmed", "Completed", "Cancelled"], // 👈 restrict to valid values
-  },
-});
+  { timestamps: true }
+);
 
 // Normalize before save
 appointmentSchema.pre("save", function (next) {
