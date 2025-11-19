@@ -1,56 +1,23 @@
 import mongoose from "mongoose";
-import Order from "./models/Orders.js"; // adjust path as needed
+import dotenv from "dotenv";
 import Product from "./models/Product.js";
+import { toProperCase } from "./utils/stringCase.js";
 
-async function cleanLegacyOrders() {
-  const MONGO_URI =
-    "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate";
+dotenv.config(); // 👈 loads .env
 
-  await mongoose.connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 30000,
-  });
-  console.log("✅ Connected to MongoDB");
+(async () => {
+  await mongoose.connect(process.env.MONGO_URI); // now defined
 
-  await mongoose.connection.db.admin().ping();
-  console.log("✅ MongoDB ping successful");
-
-  try {
-    const orders = await Order.find().populate("items.product");
-
-    const brokenOrders = [];
-
-    for (const order of orders) {
-      const brokenItems = order.items.filter(
-        (item) =>
-          !item.product || typeof item.product !== "object" || !item.product._id
-      );
-
-      if (brokenItems.length > 0) {
-        console.warn(
-          `⚠️ Order ${order._id} has ${brokenItems.length} broken items`
-        );
-        brokenOrders.push({
-          orderId: order._id,
-          brokenCount: brokenItems.length,
-          customerName: order.customerName,
-          createdAt: order.createdAt,
-        });
-
-        // Optional: Remove broken items from the order
-        order.items = order.items.filter(
-          (item) => item.product && typeof item.product === "object"
-        );
-
-        await order.save();
-        console.log(`✅ Cleaned Order ${order._id}`);
-      }
+  const products = await Product.find({});
+  for (const p of products) {
+    const normalized = toProperCase(p.category);
+    if (normalized !== p.category) {
+      p.category = normalized;
+      await p.save();
+      console.log(`✅ Normalized: ${p._id} → ${normalized}`);
     }
-
-    console.log(`🧹 Cleanup complete. ${brokenOrders.length} orders cleaned.`);
-    console.table(brokenOrders);
-  } catch (err) {
-    console.error("❌ Cleanup failed:", err.message);
   }
-}
 
-cleanLegacyOrders();
+  await mongoose.disconnect();
+  console.log("✨ Done.");
+})();
