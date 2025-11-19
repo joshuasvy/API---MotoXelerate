@@ -32,7 +32,7 @@ router.post("/", authToken, async (req, res) => {
       date: new Date(date),
       time,
       service_Charge,
-      status: "pending",
+      status: "Pending",
     });
 
     await newAppointment.save();

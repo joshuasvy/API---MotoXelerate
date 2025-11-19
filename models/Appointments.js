@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+const toProperCase = (str = "") =>
+  str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
 const appointmentSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -12,7 +15,36 @@ const appointmentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   time: { type: String, required: true },
   service_Charge: { type: Number, required: true },
-  status: { type: String, default: "pending" },
+  status: {
+    type: String,
+    default: "Pending", // 👈 normalized default
+    enum: ["Pending", "Confirmed", "Completed", "Cancelled"], // 👈 restrict to valid values
+  },
+});
+
+// Normalize before save
+appointmentSchema.pre("save", function (next) {
+  if (this.isModified("status") && typeof this.status === "string") {
+    this.status = toProperCase(this.status);
+  }
+  next();
+});
+
+// Normalize before update
+appointmentSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate() || {};
+  const status = update.status ?? (update.$set && update.$set.status);
+
+  if (typeof status === "string") {
+    const normalized = toProperCase(status);
+    if (update.$set && update.$set.status) {
+      update.$set.status = normalized;
+    } else {
+      update.status = normalized;
+    }
+    this.setUpdate(update);
+  }
+  next();
 });
 
 export default mongoose.model("Appointment", appointmentSchema);
