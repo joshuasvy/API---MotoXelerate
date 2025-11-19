@@ -74,6 +74,43 @@ router.post("/", async (req, res) => {
   }
 });
 
+// ✅ Fetch all reviews (for dashboard)
+router.get("/", async (req, res) => {
+  try {
+    console.log("🔍 Fetching all reviews for dashboard...");
+
+    const reviews = await Reviews.find()
+      .sort({ createdAt: -1 })
+      .populate("userId", "firstName lastName image");
+
+    if (!reviews || reviews.length === 0) {
+      console.warn("⚠️ No reviews found in database.");
+      return res.status(200).json([]);
+    }
+
+    reviews.forEach((r, i) => {
+      console.log(`🔍 Review ${i + 1}:`, {
+        reviewId: r._id,
+        userId: r.userId?._id,
+        firstName: r.userId?.firstName,
+        lastName: r.userId?.lastName,
+        image: r.userId?.image,
+        rate: r.rate,
+        review: r.review,
+      });
+    });
+
+    console.log(`✅ Found ${reviews.length} total reviews`);
+    res.json(reviews);
+  } catch (err) {
+    console.error("❌ Failed to fetch all reviews:", {
+      message: err.message,
+      stack: err.stack,
+    });
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
 // ✅ Fetch reviews for a product
 router.get("/product/:productId", async (req, res) => {
   try {
