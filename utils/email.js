@@ -37,7 +37,8 @@ export async function sendVerificationEmail(to, token) {
       from: process.env.EMAIL_FROM,
       to,
       subject: "MotoXelerate — Verify your email",
-      html,
+      text: `Verify your account by clicking this link: ${url}`,
+      html: `<p>Click <a href="${url}">here</a> to verify your account.</p>`,
     });
     console.log(`📧 Verification email sent to ${to}`);
   } catch (err) {
