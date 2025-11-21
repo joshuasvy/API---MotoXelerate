@@ -7,14 +7,14 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
+import { nanoid } from "nanoid";
+import { sendVerificationEmail } from "../utils/email.js";
 import streamifier from "streamifier";
 import Orders from "../models/Orders.js";
 import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET;
 
 // ✅ Cloudinary config
 cloudinary.config({
@@ -121,7 +121,7 @@ router.get("/me", authToken, async (req, res) => {
   }
 });
 
-// ✅ POST /register
+// POST /register
 router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, address, contact, email, password } = req.body;
@@ -132,7 +132,6 @@ router.post("/register", async (req, res) => {
       address,
       contact,
       email,
-      password,
     });
 
     if (
@@ -153,25 +152,101 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ message: "Email already exists." });
     }
 
+    const token = nanoid(32);
+    const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
     const newUser = new Users({
       firstName,
       lastName,
       address,
       contact,
       email,
-      password, // plain password — schema will hash it
+      password, // schema will hash
+      verified: false,
+      verificationToken: token,
+      verificationExpires: expires,
     });
 
     await newUser.save();
-    console.log("✅ User registered:", newUser._id);
-    res.status(201).json({ message: "User registered successfully" });
+    await sendVerificationEmail(email, token);
+
+    console.log("✅ User registered, verification email sent:", newUser._id);
+    res
+      .status(201)
+      .json({ message: "User registered. Please check your email to verify." });
   } catch (err) {
     console.error("❌ Registration error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ POST /login
+// GET /verify/:token
+router.get("/verify/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await Users.findOne({ verificationToken: token });
+
+    if (!user) {
+      console.warn("⚠️ Invalid token:", token);
+      return res.status(400).send("Invalid or expired verification link.");
+    }
+
+    if (user.verified) {
+      console.warn("⚠️ Already verified:", user.email);
+      return res.status(409).send("Email already verified.");
+    }
+
+    if (user.verificationExpires && new Date() > user.verificationExpires) {
+      console.warn("⚠️ Token expired:", user.email);
+      return res
+        .status(410)
+        .send("Verification link expired. Please request a new one.");
+    }
+
+    user.verified = true;
+    user.verificationToken = null;
+    user.verificationExpires = null;
+    await user.save();
+
+    console.log("✅ User verified:", user.email);
+
+    // Redirect back to your app (deep link or web)
+    const redirectUrl = `${
+      process.env.CLIENT_REDIRECT_URL
+    }?verified=1&email=${encodeURIComponent(user.email)}`;
+    return res.redirect(302, redirectUrl);
+  } catch (err) {
+    console.error("❌ Verification error:", err);
+    res.status(500).send("Something went wrong.");
+  }
+});
+
+// POST /resend
+router.post("/resend", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await Users.findOne({ email });
+
+    if (!user) return res.status(404).json({ message: "User not found." });
+    if (user.verified)
+      return res.status(409).json({ message: "Already verified." });
+
+    const token = nanoid(32);
+    user.verificationToken = token;
+    user.verificationExpires = new Date(Date.now() + 30 * 60 * 1000);
+    await user.save();
+
+    await sendVerificationEmail(email, token);
+    console.log("📧 Resent verification email:", email);
+
+    res.json({ message: "Verification email resent." });
+  } catch (err) {
+    console.error("❌ Resend error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -189,6 +264,7 @@ router.post("/login", async (req, res) => {
       id: user._id,
       email: user.email,
       hashedPassword: user.password,
+      verified: user.verified,
     });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -199,9 +275,18 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // 🚨 Block login if not verified
+    if (!user.verified) {
+      console.warn("⚠️ User not verified:", email);
+      return res
+        .status(403)
+        .json({ message: "Please verify your email before logging in." });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" } // optional: set token expiry
     );
     console.log("✅ Login successful. Token generated for user:", user._id);
 

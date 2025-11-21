@@ -1,30 +1,36 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
-const usersSchema = new mongoose.Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  image: {
-    type: String,
-    default:
-      "https://res.cloudinary.com/dhh37ekzf/image/upload/v1761966774/Starter_pfp_ymrios.jpg",
+const usersSchema = new mongoose.Schema(
+  {
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    image: {
+      type: String,
+      default:
+        "https://res.cloudinary.com/dhh37ekzf/image/upload/v1761966774/Starter_pfp_ymrios.jpg",
+    },
+    address: { type: String, required: true },
+    contact: {
+      type: String,
+      required: true,
+      unique: true,
+      match: /^\+63\s\d{3}\s\d{3}\s\d{4}$/,
+    },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+      sparse: true,
+    },
+    verified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationExpires: { type: Date },
   },
-  address: { type: String, required: true },
-  contact: {
-    type: String,
-    required: true,
-    unique: true,
-    match: /^\+63\s\d{3}\s\d{3}\s\d{4}$/,
-  },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user",
-    sparse: true,
-  },
-});
+  { timestamps: true }
+);
 
 // ✅ Hash password before saving
 usersSchema.pre("save", async function (next) {
