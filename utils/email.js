@@ -18,7 +18,7 @@ try {
 }
 
 export async function sendVerificationEmail(to, token) {
-  const url = `${process.env.APP_BASE_URL}/auth/verify/${token}`;
+  const url = `${process.env.APP_BASE_URL}/api/user/register/auth/verify/${token}`;
   const msg = {
     to,
     from: process.env.EMAIL_FROM,
