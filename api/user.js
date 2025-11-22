@@ -205,7 +205,7 @@ router.post("/register", async (req, res) => {
 });
 
 // GET /verify/:token
-router.get("/verify/:token", async (req, res) => {
+router.get("/auth/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
     console.log("🔍 Verification attempt with token:", token);
