@@ -132,8 +132,10 @@ router.post("/register", async (req, res) => {
       address,
       contact,
       email,
+      passwordPreview: password ? "[HIDDEN]" : "❌ MISSING",
     });
 
+    // Defensive check: required fields
     if (
       !firstName ||
       !lastName ||
@@ -142,19 +144,32 @@ router.post("/register", async (req, res) => {
       !email ||
       !password
     ) {
-      console.warn("⚠️ Missing required fields");
+      console.warn("⚠️ Missing required fields:", {
+        firstName: !!firstName,
+        lastName: !!lastName,
+        address: !!address,
+        contact: !!contact,
+        email: !!email,
+        password: !!password,
+      });
       return res.status(400).json({ message: "All fields are required." });
     }
 
+    // Defensive check: existing user
     const existingUser = await Users.findOne({ email });
     if (existingUser) {
       console.warn("⚠️ Email already registered:", email);
       return res.status(409).json({ message: "Email already exists." });
     }
 
+    // Generate token
     const token = nanoid(32);
     const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    console.log("🔑 Generated verification token:", {
+      tokenPreview: token.slice(0, 6) + "...",
+    });
 
+    // Create user
     const newUser = new Users({
       firstName,
       lastName,
@@ -168,14 +183,23 @@ router.post("/register", async (req, res) => {
     });
 
     await newUser.save();
-    await sendVerificationEmail(email, token);
+    console.log("💾 User saved to DB:", {
+      id: newUser._id,
+      email: newUser.email,
+    });
 
-    console.log("✅ User registered, verification email sent:", newUser._id);
+    // Send email
+    await sendVerificationEmail(email, token);
+    console.log("📧 Verification email dispatched:", { to: email });
+
     res
       .status(201)
       .json({ message: "User registered. Please check your email to verify." });
   } catch (err) {
-    console.error("❌ Registration error:", err);
+    console.error("❌ Registration error:", {
+      error: err.message,
+      stack: err.stack,
+    });
     res.status(500).json({ error: err.message });
   }
 });
@@ -184,6 +208,8 @@ router.post("/register", async (req, res) => {
 router.get("/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
+    console.log("🔍 Verification attempt with token:", token);
+
     const user = await Users.findOne({ verificationToken: token });
 
     if (!user) {
@@ -197,7 +223,10 @@ router.get("/verify/:token", async (req, res) => {
     }
 
     if (user.verificationExpires && new Date() > user.verificationExpires) {
-      console.warn("⚠️ Token expired:", user.email);
+      console.warn("⚠️ Token expired:", {
+        email: user.email,
+        expiredAt: user.verificationExpires,
+      });
       return res
         .status(410)
         .send("Verification link expired. Please request a new one.");
@@ -208,15 +237,19 @@ router.get("/verify/:token", async (req, res) => {
     user.verificationExpires = null;
     await user.save();
 
-    console.log("✅ User verified:", user.email);
+    console.log("✅ User verified:", { email: user.email, id: user._id });
 
-    // Redirect back to your app (deep link or web)
     const redirectUrl = `${
       process.env.CLIENT_REDIRECT_URL
     }?verified=1&email=${encodeURIComponent(user.email)}`;
+    console.log("↪️ Redirecting to:", redirectUrl);
+
     return res.redirect(302, redirectUrl);
   } catch (err) {
-    console.error("❌ Verification error:", err);
+    console.error("❌ Verification error:", {
+      error: err.message,
+      stack: err.stack,
+    });
     res.status(500).send("Something went wrong.");
   }
 });
@@ -225,23 +258,34 @@ router.get("/verify/:token", async (req, res) => {
 router.post("/resend", async (req, res) => {
   try {
     const { email } = req.body;
+    console.log("📤 Resend verification attempt:", email);
+
     const user = await Users.findOne({ email });
 
-    if (!user) return res.status(404).json({ message: "User not found." });
-    if (user.verified)
+    if (!user) {
+      console.warn("⚠️ User not found for resend:", email);
+      return res.status(404).json({ message: "User not found." });
+    }
+    if (user.verified) {
+      console.warn("⚠️ Already verified, resend blocked:", email);
       return res.status(409).json({ message: "Already verified." });
+    }
 
     const token = nanoid(32);
     user.verificationToken = token;
     user.verificationExpires = new Date(Date.now() + 30 * 60 * 1000);
     await user.save();
 
+    console.log("🔑 New verification token generated for resend:", {
+      tokenPreview: token.slice(0, 6) + "...",
+    });
+
     await sendVerificationEmail(email, token);
     console.log("📧 Resent verification email:", email);
 
     res.json({ message: "Verification email resent." });
   } catch (err) {
-    console.error("❌ Resend error:", err);
+    console.error("❌ Resend error:", { error: err.message, stack: err.stack });
     res.status(500).json({ error: err.message });
   }
 });

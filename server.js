@@ -16,13 +16,6 @@ import xenditWebhooks from "./api/xenditWebhooks.js";
 import mockWebhook from "./api/mockWebhook.js";
 
 dotenv.config();
-
-console.log("ENV check:", {
-  SMTP_USER: process.env.SMTP_USER,
-  SMTP_PASS: process.env.SMTP_PASS,
-  EMAIL_FROM: process.env.EMAIL_FROM,
-});
-
 const app = express();
 
 // Middleware
