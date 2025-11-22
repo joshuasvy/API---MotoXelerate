@@ -1,10 +1,18 @@
 import express from "express";
+import dotenv from "dotenv";
 import axios from "axios";
 import https from "https";
 
+dotenv.config();
 const router = express.Router();
 
 router.post("/", async (req, res) => {
+  console.log(
+    "🔐 Loaded XENDIT_GCASH_API:",
+    process.env.XENDIT_GCASH_API?.slice(0, 12),
+    "..."
+  );
+
   console.log("📥 Incoming GCash request:", req.body);
 
   // Defensive input validation
