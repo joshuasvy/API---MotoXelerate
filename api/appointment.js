@@ -1,9 +1,10 @@
 import express from "express";
 import Appointments from "../models/Appointments.js";
-import Users from "../models/Users.js"; // ✅ Needed to fetch user info
-import { authToken } from "../middleware/authToken.js"; // ✅ Auth middleware
+import Users from "../models/Users.js";
+import Admin from "../models/Admin.js";
+import { authToken } from "../middleware/authToken.js";
 
-const router = express.Router(); // ✅ This line was missing
+const router = express.Router();
 
 router.use((req, res, next) => {
   console.log("📡 Appointment route hit:", req.method, req.originalUrl);
@@ -15,7 +16,6 @@ router.post("/", authToken, async (req, res) => {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
 
-    // ⚠️ Placeholder: Missing required fields
     if (!date || !time || !service_Type || !service_Charge) {
       console.warn("⚠️ Missing required fields:", {
         date,
@@ -26,7 +26,6 @@ router.post("/", authToken, async (req, res) => {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // ⚠️ Placeholder: User lookup
     const user = await Users.findById(userId);
     if (!user) {
       console.warn("⚠️ User not found:", userId);
@@ -36,23 +35,27 @@ router.post("/", authToken, async (req, res) => {
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const downpaymentAmount = Math.round(Number(service_Charge) * 0.5);
 
-    // ⚠️ Placeholder: Appointment creation
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate)) {
+      console.warn("⚠️ Invalid date format:", date);
+      return res.status(400).json({ message: "Invalid date format." });
+    }
+
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
       service_Type,
       mechanic: "",
-      date: new Date(date),
+      date: parsedDate,
       time,
       service_Charge,
       status: "Pending",
-
-      // ⚠️ Placeholder: Embedded payment object
+      read: false,
       payment: {
-        referenceId: null, // will be set by /api/gcash
-        chargeId: null, // will be set by /api/gcash
+        referenceId: null,
+        chargeId: null,
         amount: downpaymentAmount,
-        status: "Pending", // webhook will flip to "Succeeded"
+        status: "Pending",
         paidAt: null,
         method: "GCash",
       },
@@ -60,15 +63,13 @@ router.post("/", authToken, async (req, res) => {
 
     await newAppointment.save();
 
-    // ⚠️ Placeholder: Response confirmation
-    res.status(201).json({
+    return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
     });
   } catch (err) {
-    // ⚠️ Placeholder: Error handling
     console.error("❌ Booking error:", err.message);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -76,26 +77,25 @@ router.get("/user", authToken, async (req, res) => {
   console.log("📥 GET /api/appointment/user hit");
   const userId = req.user.id;
   const appointments = await Appointments.find({ userId }).sort({ date: -1 });
-  res.status(200).json(appointments);
+  return res.status(200).json(appointments);
 });
 
-// 📅 Get recent appointment by userId (public)
 router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
     const appointment = await Appointments.findOne({ userId })
-      .sort({ date: -1 }) // ✅ most recent
+      .sort({ date: -1 })
       .select("service_Type date time status service_Charge");
 
     if (!appointment) {
       return res.status(404).json({ message: "No appointment found" });
     }
 
-    res.status(200).json(appointment);
+    return res.status(200).json(appointment);
   } catch (err) {
     console.error("❌ Failed to fetch appointment:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -112,16 +112,15 @@ router.put("/:id", authToken, async (req, res) => {
       return res.status(404).json({ message: "Appointment not found" });
     }
 
-    res
+    return res
       .status(200)
       .json({ message: "Appointment updated", appointment: updated });
   } catch (err) {
     console.error("❌ Update error:", err.message);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
-// PATCH: mark appointment as read
 router.patch("/:id/read", async (req, res) => {
   try {
     const appt = await Appointments.findByIdAndUpdate(
@@ -132,9 +131,15 @@ router.patch("/:id/read", async (req, res) => {
     if (!appt) {
       return res.status(404).json({ message: "Appointment not found" });
     }
-    res.json({ message: "Appointment marked as read", appointment: appt });
+    return res.json({
+      message: "Appointment marked as read",
+      appointment: appt,
+    });
   } catch (err) {
-    res.status(500).json({ message: "Error updating appointment", error: err });
+    console.error("❌ Read patch error:", err.message);
+    return res
+      .status(500)
+      .json({ message: "Error updating appointment", error: err });
   }
 });
 
@@ -150,7 +155,7 @@ router.delete("/:id", authToken, async (req, res) => {
     return res.status(404).json({ message: "Appointment not found." });
   }
 
-  res.status(200).json({ message: "Appointment deleted successfully." });
+  return res.status(200).json({ message: "Appointment deleted successfully." });
 });
 
 export default router;

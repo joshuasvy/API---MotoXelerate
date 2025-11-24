@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+const toProperCase = (str = "") =>
+  str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
 const appointmentSchema = new mongoose.Schema(
   {
     userId: {
