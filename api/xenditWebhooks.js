@@ -1,7 +1,7 @@
 import express from "express";
 import Order from "../models/Orders.js";
 import Product from "../models/Product.js";
-import Appointment from "../models/Appointment.js";
+import Appointments from "../models/Appointments.js";
 
 const router = express.Router();
 
@@ -78,7 +78,7 @@ router.post("/", async (req, res) => {
     }
 
     // If no Order found, try Appointment
-    updated = await Appointment.findOneAndUpdate(
+    updated = await Appointments.findOneAndUpdate(
       { "payment.referenceId": reference_id },
       {
         $set: {

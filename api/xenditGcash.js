@@ -2,8 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
 import https from "https";
-import Appointments from "../models/Appointment.js";
-import Orders from "../models/Order.js";
+import Appointments from "../models/Appointments.js";
+import Orders from "../models/Orders.js";
 
 dotenv.config();
 const router = express.Router();
