@@ -14,13 +14,13 @@ router.post("/", async (req, res) => {
   }
 
   const data = req.body.data || {};
-  const reference_id = data.reference_id;
+  const referenceId = data.reference_id; // ✅ consistent naming
   const rawStatus = data.status;
   const amount = data.charge_amount ?? null; // ✅ use charge_amount
 
-  if (!reference_id || typeof reference_id !== "string") {
-    console.warn("⚠️ Missing or invalid reference_id:", reference_id);
-    return res.status(400).send("Missing or invalid reference_id");
+  if (!referenceId || typeof referenceId !== "string") {
+    console.warn("⚠️ Missing or invalid referenceId:", referenceId);
+    return res.status(400).send("Missing or invalid referenceId");
   }
 
   if (!rawStatus || typeof rawStatus !== "string") {
@@ -46,7 +46,7 @@ router.post("/", async (req, res) => {
   try {
     // Try updating an Order first
     let updated = await Order.findOneAndUpdate(
-      { "payment.referenceId": reference_id },
+      { "payment.referenceId": referenceId },
       {
         $set: {
           "payment.status": normalizedStatus,
@@ -82,13 +82,12 @@ router.post("/", async (req, res) => {
 
     // If no Order found, try Appointment
     updated = await Appointments.findOneAndUpdate(
-      { "payment.referenceId": reference_id },
+      { "payment.referenceId": referenceId },
       {
         $set: {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
           "payment.paidAt": new Date(),
-          status: normalizedStatus === "Succeeded" ? "Confirmed" : "Pending",
         },
       },
       { new: true }
@@ -96,8 +95,8 @@ router.post("/", async (req, res) => {
 
     if (!updated) {
       console.warn(
-        "⚠️ No matching Order or Appointment for reference_id:",
-        reference_id
+        "⚠️ No matching Order or Appointment for referenceId:",
+        referenceId
       );
       return res.status(404).send("Record not found");
     }
