@@ -13,21 +13,24 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Invalid webhook payload");
   }
 
-  const { reference_id, status, amount } = req.body.data || {};
+  const data = req.body.data || {};
+  const reference_id = data.reference_id;
+  const rawStatus = data.status;
+  const amount = data.charge_amount ?? null; // ✅ use charge_amount
 
   if (!reference_id || typeof reference_id !== "string") {
     console.warn("⚠️ Missing or invalid reference_id:", reference_id);
     return res.status(400).send("Missing or invalid reference_id");
   }
 
-  if (!status || typeof status !== "string") {
-    console.warn("⚠️ Missing or invalid status:", status);
+  if (!rawStatus || typeof rawStatus !== "string") {
+    console.warn("⚠️ Missing or invalid status:", rawStatus);
     return res.status(400).send("Missing or invalid status");
   }
 
   const capitalize = (s) =>
     s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  const normalizedStatus = capitalize(status);
+  const normalizedStatus = capitalize(rawStatus);
 
   const statusMap = {
     Succeeded: "Processing",
@@ -38,7 +41,7 @@ router.post("/", async (req, res) => {
   const orderStatus = statusMap[normalizedStatus] || "Pending";
 
   console.log("🔍 Normalized status:", normalizedStatus);
-  console.log("💰 Incoming amount:", amount);
+  console.log("💰 Incoming amount:", amount ?? "⚠️ Missing charge_amount");
 
   try {
     // Try updating an Order first
@@ -58,7 +61,7 @@ router.post("/", async (req, res) => {
     if (updated) {
       console.log("✅ Order updated:", {
         orderId: updated._id,
-        referenceId: reference_id,
+        referenceId,
         status: normalizedStatus,
       });
 
@@ -101,14 +104,14 @@ router.post("/", async (req, res) => {
 
     console.log("✅ Appointment updated:", {
       appointmentId: updated._id,
-      referenceId: reference_id,
+      referenceId,
       status: normalizedStatus,
     });
 
-    res.status(200).send("Webhook received (Appointment)");
+    return res.status(200).send("Webhook received (Appointment)");
   } catch (err) {
     console.error("❌ Webhook processing error:", err.message);
-    res.status(500).send("Error processing webhook");
+    return res.status(500).send("Error processing webhook");
   }
 });
 
