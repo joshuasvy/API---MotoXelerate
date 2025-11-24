@@ -22,13 +22,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
     customerName: { type: String, required: true },
-    items: {
-      type: [orderItemSchema],
-      validate: [
-        (val) => val.length > 0,
-        "Order must contain at least one item",
-      ],
-    },
+    items: [orderItemSchema],
     totalOrder: { type: Number, required: true },
     paymentMethod: {
       type: String,
@@ -43,6 +37,7 @@ const orderSchema = new mongoose.Schema(
     orderDate: { type: Date, default: Date.now },
     deliveryAddress: { type: String },
     notes: { type: String },
+    read: { type: Boolean, default: false },
 
     // ✅ Embedded payment tracking
     payment: {
@@ -55,12 +50,7 @@ const orderSchema = new mongoose.Schema(
         default: "Pending",
       },
       paidAt: { type: Date, default: null },
-    },
-
-    // 👇 New field for notification read state
-    read: {
-      type: Boolean,
-      default: false,
+      method: { type: String, default: "GCash" },
     },
   },
   { timestamps: true }

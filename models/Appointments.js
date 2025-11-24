@@ -1,8 +1,5 @@
 import mongoose from "mongoose";
 
-const toProperCase = (str = "") =>
-  str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-
 const appointmentSchema = new mongoose.Schema(
   {
     userId: {
@@ -21,11 +18,20 @@ const appointmentSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "Confirmed", "Completed", "Cancelled"],
     },
+    read: { type: Boolean, default: false },
 
-    // 👇 New field for notification read state
-    read: {
-      type: Boolean,
-      default: false,
+    // ✅ Embedded payment tracking
+    payment: {
+      referenceId: { type: String, unique: true, index: true },
+      chargeId: { type: String, default: null },
+      amount: { type: Number, required: true }, // downpayment amount
+      status: {
+        type: String,
+        enum: ["Pending", "Succeeded", "Failed"],
+        default: "Pending",
+      },
+      paidAt: { type: Date, default: null },
+      method: { type: String, default: "GCash" },
     },
   },
   { timestamps: true }

@@ -1,6 +1,7 @@
 import express from "express";
 import Order from "../models/Orders.js";
 import Product from "../models/Product.js";
+import Appointment from "../models/Appointment.js";
 
 const router = express.Router();
 
@@ -40,7 +41,8 @@ router.post("/", async (req, res) => {
   console.log("💰 Incoming amount:", amount);
 
   try {
-    const updated = await Order.findOneAndUpdate(
+    // Try updating an Order first
+    let updated = await Order.findOneAndUpdate(
       { "payment.referenceId": reference_id },
       {
         $set: {
@@ -53,36 +55,57 @@ router.post("/", async (req, res) => {
       { new: true }
     );
 
-    if (!updated) {
-      console.warn("⚠️ No matching order for reference_id:", reference_id);
-      return res.status(404).send("Order not found");
-    }
-
-    if (!Array.isArray(updated.items)) {
-      console.warn("⚠️ Order found but items is not an array:", {
+    if (updated) {
+      console.log("✅ Order updated:", {
         orderId: updated._id,
-        items: updated.items,
+        referenceId: reference_id,
+        status: normalizedStatus,
       });
-    }
 
-    if (
-      ["Failed", "Expired"].includes(normalizedStatus) &&
-      Array.isArray(updated.items)
-    ) {
-      for (const item of updated.items) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: item.quantity },
-        });
+      // Roll back stock if payment failed/expired
+      if (
+        ["Failed", "Expired"].includes(normalizedStatus) &&
+        Array.isArray(updated.items)
+      ) {
+        for (const item of updated.items) {
+          await Product.findByIdAndUpdate(item.product, {
+            $inc: { stock: item.quantity },
+          });
+        }
       }
+
+      return res.status(200).send("Webhook received (Order)");
     }
 
-    console.log("✅ Order updated:", {
-      orderId: updated._id,
+    // If no Order found, try Appointment
+    updated = await Appointment.findOneAndUpdate(
+      { "payment.referenceId": reference_id },
+      {
+        $set: {
+          "payment.status": normalizedStatus,
+          "payment.amount": amount,
+          "payment.paidAt": new Date(),
+          status: normalizedStatus === "Succeeded" ? "Confirmed" : "Pending",
+        },
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      console.warn(
+        "⚠️ No matching Order or Appointment for reference_id:",
+        reference_id
+      );
+      return res.status(404).send("Record not found");
+    }
+
+    console.log("✅ Appointment updated:", {
+      appointmentId: updated._id,
       referenceId: reference_id,
       status: normalizedStatus,
     });
 
-    res.status(200).send("Webhook received");
+    res.status(200).send("Webhook received (Appointment)");
   } catch (err) {
     console.error("❌ Webhook processing error:", err.message);
     res.status(500).send("Error processing webhook");

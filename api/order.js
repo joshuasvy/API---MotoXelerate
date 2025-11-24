@@ -25,6 +25,7 @@ router.post("/", async (req, res) => {
     paidAmount,
   } = req.body;
 
+  // ⚠️ Placeholder: Validate checkout data
   if (
     !userId ||
     !selectedItems ||
@@ -39,6 +40,7 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
+    // ⚠️ Placeholder: User lookup
     const user = await Users.findById(userId).session(session);
     if (!user) {
       throw new Error(`User not found: ${userId}`);
@@ -47,11 +49,13 @@ router.post("/", async (req, res) => {
     const orderItems = [];
 
     for (const item of selectedItems) {
+      // ⚠️ Placeholder: Product lookup
       const product = await Product.findById(item.product).session(session);
       if (!product) {
         throw new Error(`Product not found: ${item.product}`);
       }
 
+      // ⚠️ Placeholder: Product field validation
       const requiredFields = ["productName", "price", "image", "category"];
       const missing = requiredFields.filter(
         (field) => product[field] === undefined || product[field] === null
@@ -62,6 +66,7 @@ router.post("/", async (req, res) => {
         );
       }
 
+      // ⚠️ Placeholder: Stock check
       if (product.stock < item.quantity) {
         throw new Error(`Insufficient stock for ${product.productName}`);
       }
@@ -78,6 +83,7 @@ router.post("/", async (req, res) => {
 
     console.log("🧾 Final orderItems before save:", orderItems);
 
+    // ⚠️ Placeholder: Order creation
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -87,14 +93,17 @@ router.post("/", async (req, res) => {
       orderRequest: "For Approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
+
+      // ✅ Embedded payment object
       payment:
         paymentMethod === "Gcash"
           ? {
-              referenceId,
-              chargeId,
+              referenceId: referenceId || null, // will be set by /api/gcash
+              chargeId: chargeId || null, // will be set by /api/gcash
               amount: paidAmount || totalOrder,
-              status: "Pending",
+              status: "Pending", // webhook will flip to "Succeeded"
               paidAt: null,
+              method: "Gcash",
             }
           : undefined,
     });
@@ -103,6 +112,7 @@ router.post("/", async (req, res) => {
 
     const savedOrder = await newOrder.save({ session });
 
+    // ⚠️ Placeholder: Save validation
     if (!savedOrder || !savedOrder._id) {
       console.warn("⚠️ Order save failed or _id missing:", savedOrder);
       await session.abortTransaction();
@@ -112,6 +122,7 @@ router.post("/", async (req, res) => {
         .json({ error: "Order save failed or _id missing" });
     }
 
+    // ⚠️ Placeholder: Confirm retrieval
     const confirmed = await Order.findById(savedOrder._id)
       .session(session)
       .populate({
@@ -137,6 +148,7 @@ router.post("/", async (req, res) => {
 
     console.log("✅ Order saved:", savedOrder._id);
 
+    // ⚠️ Placeholder: StockLog entries
     for (const item of selectedItems) {
       const logEntry = {
         productId: item.product,
@@ -166,6 +178,7 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // ⚠️ Placeholder: Cart cleanup
     await Cart.findOneAndUpdate(
       { userId },
       {

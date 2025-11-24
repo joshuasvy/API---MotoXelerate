@@ -15,15 +15,28 @@ router.post("/", authToken, async (req, res) => {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
 
+    // ⚠️ Placeholder: Missing required fields
     if (!date || !time || !service_Type || !service_Charge) {
+      console.warn("⚠️ Missing required fields:", {
+        date,
+        time,
+        service_Type,
+        service_Charge,
+      });
       return res.status(400).json({ message: "Missing required fields." });
     }
 
+    // ⚠️ Placeholder: User lookup
     const user = await Users.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
+    if (!user) {
+      console.warn("⚠️ User not found:", userId);
+      return res.status(404).json({ message: "User not found." });
+    }
 
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    const downpaymentAmount = Math.round(Number(service_Charge) * 0.5);
 
+    // ⚠️ Placeholder: Appointment creation
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
@@ -33,28 +46,28 @@ router.post("/", authToken, async (req, res) => {
       time,
       service_Charge,
       status: "Pending",
+
+      // ⚠️ Placeholder: Embedded payment object
+      payment: {
+        referenceId: null, // will be set by /api/gcash
+        chargeId: null, // will be set by /api/gcash
+        amount: downpaymentAmount,
+        status: "Pending", // webhook will flip to "Succeeded"
+        paidAt: null,
+        method: "GCash",
+      },
     });
 
     await newAppointment.save();
-    res
-      .status(201)
-      .json({ message: "Appointment booked!", appointment: newAppointment });
-  } catch (err) {
-    console.error("❌ Booking error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
 
-router.get("/", async (req, res) => {
-  console.log("📥 GET /api/appointment hit");
-  try {
-    const appointments = await Appointments.find().sort({ date: 1 });
-    res.status(200).json({
-      message: "Route is working!",
-      appointments,
+    // ⚠️ Placeholder: Response confirmation
+    res.status(201).json({
+      message: "Appointment booked! Awaiting downpayment.",
+      appointment: newAppointment,
     });
   } catch (err) {
-    console.error("❌ Fetch error:", err);
+    // ⚠️ Placeholder: Error handling
+    console.error("❌ Booking error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
