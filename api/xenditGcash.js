@@ -38,9 +38,12 @@ router.post("/", async (req, res) => {
       checkout_method: "ONE_TIME_PAYMENT",
       channel_code: "PH_GCASH",
       channel_properties: {
-        success_redirect_url: "myapp://gcash-success",
-        failure_redirect_url: "myapp://gcash-failure",
+        success_redirect_url:
+          "https://api-motoxelerate.onrender.com/api/redirect/gcash-success",
+        failure_redirect_url:
+          "https://api-motoxelerate.onrender.com/api/redirect/gcash-failure",
       },
+
       callback_url: callbackUrl,
     };
 
