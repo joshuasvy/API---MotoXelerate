@@ -39,10 +39,11 @@ router.post("/", async (req, res) => {
       channel_code: "PH_GCASH",
       channel_properties: {
         success_redirect_url:
-          "https://api-motoxelerate.onrender.com/api/redirect/gcash-success",
+          "https://api-motoxelerate.onrender.com/api/redirect/gcash-success?id={id}",
         failure_redirect_url:
-          "https://api-motoxelerate.onrender.com/api/redirect/gcash-failure",
+          "https://api-motoxelerate.onrender.com/api/redirect/gcash-failure?id={id}",
       },
+
       callback_url: callbackUrl,
     };
 
