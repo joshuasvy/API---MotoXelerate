@@ -1,3 +1,4 @@
+import { io } from "../server.js";
 import mongoose from "mongoose";
 import express from "express";
 import Order from "../models/Orders.js";
@@ -95,6 +96,7 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
+
     if (!savedOrder || !savedOrder._id) {
       await session.abortTransaction();
       session.endSession();
@@ -432,6 +434,23 @@ router.put("/:id", async (req, res) => {
   } catch (err) {
     console.error("❌ Error updating order status:", err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+router.patch("/:id/status", async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    order.orderRequest = req.body.status; // e.g. "Delivered"
+    await order.save();
+
+    // ✅ Broadcast updated order
+    io.emit("order:update", order);
+
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
