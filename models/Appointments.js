@@ -18,8 +18,8 @@ const appointmentSchema = new mongoose.Schema(
     service_Charge: { type: Number, required: true },
     status: {
       type: String,
-      default: "Pending",
       enum: ["Pending", "Confirmed", "Completed", "Cancelled"],
+      default: "Pending",
     },
     read: { type: Boolean, default: false },
 

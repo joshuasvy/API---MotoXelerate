@@ -22,21 +22,25 @@ const buildRedirectPage = (deepLink) => `
 
 router.get("/gcash-success", (req, res) => {
   const referenceId = req.query.reference_id;
+  const type = req.query.type || "order"; // default fallback
+
   if (!referenceId) {
-    console.error("Missing reference_id in redirect:", req.query);
     return res.send(
       buildRedirectPage("myapp://completion/failure?error=missing_reference")
     );
   }
-  const deepLink = `myapp://completion/success?reference=${referenceId}`;
+
+  const deepLink = `myapp://completion/success?reference=${referenceId}&type=${type}`;
   res.send(buildRedirectPage(deepLink));
 });
 
 router.get("/gcash-failure", (req, res) => {
   const referenceId = req.query.reference_id;
+  const type = req.query.type || "order";
+
   const deepLink = referenceId
-    ? `myapp://completion/failure?reference=${referenceId}`
-    : "myapp://completion/failure";
+    ? `myapp://completion/failure?reference=${referenceId}&type=${type}`
+    : `myapp://completion/failure?type=${type}`;
 
   res.send(buildRedirectPage(deepLink));
 });
