@@ -1,4 +1,4 @@
-import { io } from "../server.js";
+import { broadcastEntity } from "../utils/socketBroadcast.js";
 import mongoose from "mongoose";
 import express from "express";
 import Order from "../models/Orders.js";
@@ -442,11 +442,11 @@ router.patch("/:id/status", async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    order.orderRequest = req.body.status; // e.g. "Delivered"
+    order.orderRequest = req.body.status;
     await order.save();
 
-    // ✅ Broadcast updated order
-    io.emit("order:update", order);
+    // ✅ Broadcast using helper
+    broadcastEntity("order", order, "update");
 
     res.json(order);
   } catch (err) {

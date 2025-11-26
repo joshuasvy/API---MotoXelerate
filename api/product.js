@@ -1,5 +1,6 @@
 import express from "express";
 import Product from "../models/Product.js";
+import { broadcastEntity } from "../utils/socketBroadcast.js";
 
 const router = express.Router();
 
@@ -37,6 +38,8 @@ router.post("/", async (req, res) => {
     });
 
     const saved = await newProduct.save();
+    broadcastEntity("product", newProduct, "update");
+
     res.status(201).json(saved);
   } catch (err) {
     console.error("❌ Error creating product:", err);
@@ -82,6 +85,8 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
+    broadcastEntity("product", product, "update");
+
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }

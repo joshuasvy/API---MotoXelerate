@@ -33,18 +33,6 @@ io.on("connection", (socket) => {
     console.log(`⚠️ Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 
-  // Appointment events
-  socket.on("appointment:new", (data) => {
-    console.log("📥 appointment:new received:", data);
-    io.emit("appointment:update", data);
-  });
-
-  // Order events
-  socket.on("order:new", (data) => {
-    console.log("📥 order:new received:", data);
-    io.emit("order:update", data);
-  });
-
   // Catch-all for unexpected events
   socket.onAny((event, ...args) => {
     console.log(`🔎 Unhandled socket event: ${event}`, args);

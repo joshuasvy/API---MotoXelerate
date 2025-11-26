@@ -1,8 +1,8 @@
+import { authToken } from "../middleware/authToken.js";
+import { broadcastEntity } from "../utils/socketBroadcast.js";
 import express from "express";
 import Appointments from "../models/Appointments.js";
 import Users from "../models/Users.js";
-import { authToken } from "../middleware/authToken.js";
-import { io } from "../server.js";
 
 const router = express.Router();
 
@@ -62,7 +62,7 @@ router.post("/", authToken, async (req, res) => {
     });
 
     await newAppointment.save();
-    io.emit("appointment:update", newAppointment);
+    broadcastEntity("appointment", newAppointment, "update");
 
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
