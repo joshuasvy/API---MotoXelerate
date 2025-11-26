@@ -9,6 +9,7 @@ dotenv.config();
 const router = express.Router();
 
 router.post("/", async (req, res) => {
+  console.error("❌ GCash route error:", err.response?.data || err.message);
   try {
     const { amount, userId, type, appointmentId, orderId } = req.body;
 
@@ -89,6 +90,7 @@ router.post("/", async (req, res) => {
 
     res.json({
       checkout_url: response.data.actions.desktop_web_checkout_url,
+      mobile_checkout_url: response.data.actions.mobile_web_checkout_url,
       reference_id: referenceId,
       charge_id: response.data.id,
       paid_amount: safeAmount,
