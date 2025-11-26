@@ -1,7 +1,9 @@
+import { Server } from "socket.io";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import http from "http";
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
 import adminRoutes from "./api/admin.js";
@@ -18,6 +20,25 @@ import mockWebhook from "./api/mockWebhook.js";
 
 dotenv.config();
 const app = express();
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
+
+io.on("connection", (socket) => {
+  console.log("🔌 Client connected:", socket.id);
+
+  // Example: broadcast appointment updates
+  socket.on("appointment:new", (data) => {
+    io.emit("appointment:update", data);
+  });
+
+  // Example: broadcast order updates
+  socket.on("order:new", (data) => {
+    io.emit("order:update", data);
+  });
+});
 
 // Middleware
 app.use(cors());
@@ -56,7 +77,7 @@ app.use((req, res) => {
 });
 
 // Server
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
 });
