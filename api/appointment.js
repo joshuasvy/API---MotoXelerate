@@ -72,13 +72,28 @@ router.post("/", authToken, async (req, res) => {
   }
 });
 
+router.get("/all", authToken, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Admins only." });
+  }
+
+  const appointments = await Appointments.find()
+    .populate("userId", "firstName lastName email")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return res.status(200).json({ appointments });
+});
+
 router.get("/", authToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // ✅ Only verify user if not admin
     if (req.user.role !== "admin") {
       const user = await Users.findById(userId);
       if (!user) {
+        console.warn("⚠️ User not found:", userId);
         return res.status(404).json({ message: "User not found." });
       }
     }
@@ -89,6 +104,7 @@ router.get("/", authToken, async (req, res) => {
 
     return res.status(200).json({ appointments });
   } catch (err) {
+    console.error("❌ Fetch appointments error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
