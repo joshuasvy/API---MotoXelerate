@@ -98,9 +98,11 @@ router.get("/", authToken, async (req, res) => {
       }
     }
 
-    const appointments = await Appointments.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    // ✅ Admins can fetch all appointments
+    const appointments =
+      req.user.role === "admin"
+        ? await Appointments.find().sort({ createdAt: -1 }).lean()
+        : await Appointments.find({ userId }).sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({ appointments });
   } catch (err) {
