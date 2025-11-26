@@ -1,7 +1,6 @@
 import express from "express";
 import Appointments from "../models/Appointments.js";
 import Users from "../models/Users.js";
-import Admin from "../models/Admin.js";
 import { authToken } from "../middleware/authToken.js";
 
 const router = express.Router();
@@ -69,6 +68,29 @@ router.post("/", authToken, async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Booking error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/", authToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify user exists
+    const user = await Users.findById(userId);
+    if (!user) {
+      console.warn("⚠️ User not found:", userId);
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Fetch appointments for this user
+    const appointments = await Appointments.find({ userId })
+      .sort({ createdAt: -1 }) // newest first
+      .lean();
+
+    return res.status(200).json({ appointments });
+  } catch (err) {
+    console.error("❌ Fetch appointments error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
