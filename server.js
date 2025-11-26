@@ -22,28 +22,27 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// ✅ Socket.IO instance
 const io = new Server(server, { cors: { origin: "*" } });
 
+// ✅ Connection handler
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
 
-  // Defensive log: track disconnects
   socket.on("disconnect", (reason) => {
     console.log(`⚠️ Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 
-  // Defensive log: appointment events
+  // Appointment events
   socket.on("appointment:new", (data) => {
     console.log("📥 appointment:new received:", data);
     io.emit("appointment:update", data);
-    console.log("📤 appointment:update broadcasted");
   });
 
-  // Defensive log: order events
+  // Order events
   socket.on("order:new", (data) => {
     console.log("📥 order:new received:", data);
     io.emit("order:update", data);
-    console.log("📤 order:update broadcasted");
   });
 
   // Catch-all for unexpected events
@@ -52,22 +51,22 @@ io.on("connection", (socket) => {
   });
 });
 
-// Middleware
+// ✅ Middleware
 app.use(cors());
 app.use(express.json());
 
-// Root route
+// ✅ Root route
 app.get("/", (req, res) => {
   res.send("Connected!");
 });
 
-// MongoDB connection
+// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
-// Routes
+// ✅ API routes
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
@@ -82,16 +81,17 @@ app.use("/api/webhooks", xenditWebhooks);
 app.use("/api/redirect", redirectRoutes);
 app.use("/api/gcash/webhook", mockWebhook);
 
-// 404 handler
+// ✅ 404 handler
 app.use((req, res) => {
   console.log("❌ 404 hit:", req.method, req.originalUrl);
   res.status(404).json({ message: "Route Not Found" });
 });
 
-// Server
+// ✅ Server start
 const PORT = process.env.PORT || 2004;
 server.listen(PORT, () => {
   console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
 });
 
+// ✅ Export for use in routes
 export { app, io };
