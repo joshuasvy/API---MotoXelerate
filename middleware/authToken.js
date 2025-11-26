@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import Users from "../models/Users.js";
 import Admin from "../models/Admin.js";
-
 export const authToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -28,29 +27,26 @@ export const authToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("✅ Decoded JWT payload:", decoded);
 
-    // 🔍 Try finding user first
-    let account = await Users.findById(decoded.id);
+    let account = null;
 
-    // 🔍 If not found, try admin
-    if (!account) {
+    // 🔍 If role is admin, look in Admins collection
+    if (decoded.role === "admin") {
       account = await Admin.findById(decoded.id);
+    } else {
+      account = await Users.findById(decoded.id);
     }
 
     if (!account) {
       return res.status(404).json({ message: "Account not found" });
     }
 
-    const fullName =
-      account.firstName && account.lastName
-        ? `${account.firstName} ${account.lastName}`
-        : account.name || "Unknown";
-
     req.user = {
       id: account._id,
       role: account.role,
-      name: fullName,
+      name: account.firstName
+        ? `${account.firstName} ${account.lastName}`
+        : account.name || "Unknown",
     };
-
     next();
   } catch (err) {
     console.error("❌ JWT verification error:", err.message);

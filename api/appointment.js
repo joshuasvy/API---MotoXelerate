@@ -76,16 +76,17 @@ router.get("/", authToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Verify user exists
-    const user = await Users.findById(userId);
-    if (!user) {
-      console.warn("⚠️ User not found:", userId);
-      return res.status(404).json({ message: "User not found." });
+    // ✅ Only verify user if not admin
+    if (req.user.role !== "admin") {
+      const user = await Users.findById(userId);
+      if (!user) {
+        console.warn("⚠️ User not found:", userId);
+        return res.status(404).json({ message: "User not found." });
+      }
     }
 
-    // Fetch appointments for this user
     const appointments = await Appointments.find({ userId })
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ createdAt: -1 })
       .lean();
 
     return res.status(200).json({ appointments });
@@ -96,27 +97,39 @@ router.get("/", authToken, async (req, res) => {
 });
 
 router.get("/user", authToken, async (req, res) => {
-  console.log("📥 GET /api/appointment/user hit");
-  const userId = req.user.id;
-  const appointments = await Appointments.find({ userId }).sort({ date: -1 });
-  return res.status(200).json(appointments);
+  try {
+    console.log("📥 GET /api/appointment/user hit");
+    const userId = req.user.id;
+
+    const appointments = await Appointments.find({ userId })
+      .sort({ date: -1 })
+      .lean();
+
+    return res.status(200).json({ appointments });
+  } catch (err) {
+    console.error("❌ Fetch error:", err.message);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-router.get("/user/:userId", async (req, res) => {
-  const { userId } = req.params;
-
+router.get("/user/:userId", authToken, async (req, res) => {
   try {
-    const appointment = await Appointments.findOne({ userId })
-      .sort({ date: -1 })
-      .select("service_Type date time status service_Charge");
+    const { userId } = req.params;
 
-    if (!appointment) {
-      return res.status(404).json({ message: "No appointment found" });
+    const appointments = await Appointments.find({ userId })
+      .sort({ date: -1 })
+      .select(
+        "customer_Name service_Type mechanic date time status service_Charge payment"
+      )
+      .lean();
+
+    if (!appointments || appointments.length === 0) {
+      return res.status(404).json({ message: "No appointments found" });
     }
 
-    return res.status(200).json(appointment);
+    return res.status(200).json({ appointments });
   } catch (err) {
-    console.error("❌ Failed to fetch appointment:", err.message);
+    console.error("❌ Failed to fetch appointments:", err.message);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -143,7 +156,7 @@ router.put("/:id", authToken, async (req, res) => {
   }
 });
 
-router.patch("/:id/read", async (req, res) => {
+router.patch("/:id/read", authToken, async (req, res) => {
   try {
     const appt = await Appointments.findByIdAndUpdate(
       req.params.id,
