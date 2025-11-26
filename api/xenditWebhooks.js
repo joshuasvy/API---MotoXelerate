@@ -100,7 +100,6 @@ router.post("/", async (req, res) => {
           "payment.amount": amount,
           "payment.paidAt":
             normalizedStatus === "Succeeded" ? new Date() : null,
-          status: appointmentStatus,
         },
       },
       { new: true }
