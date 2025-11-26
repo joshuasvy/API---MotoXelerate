@@ -9,7 +9,6 @@ dotenv.config();
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  console.error("❌ GCash route error:", err.response?.data || err.message);
   try {
     const { amount, userId, type, appointmentId, orderId } = req.body;
 
@@ -44,7 +43,6 @@ router.post("/", async (req, res) => {
         failure_redirect_url:
           "https://api-motoxelerate.onrender.com/api/redirect/gcash-failure",
       },
-
       callback_url: callbackUrl,
     };
 
@@ -63,7 +61,6 @@ router.post("/", async (req, res) => {
       throw new Error(`Unexpected response status: ${response.status}`);
     }
 
-    // 👇 Branch logic: update Appointment or Order with embedded payment
     if (type === "appointment" && appointmentId) {
       await Appointments.findByIdAndUpdate(appointmentId, {
         $set: {
@@ -96,7 +93,7 @@ router.post("/", async (req, res) => {
       paid_amount: safeAmount,
     });
   } catch (err) {
-    console.error("❌ GCash route error:", err.message);
+    console.error("❌ GCash route error:", err.response?.data || err.message);
     res.status(500).json({ error: "GCash payment failed" });
   }
 });
