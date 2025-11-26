@@ -25,7 +25,6 @@ router.post("/", async (req, res) => {
     paidAmount,
   } = req.body;
 
-  // ✅ Validate checkout data
   if (
     !userId ||
     !selectedItems ||
@@ -40,22 +39,15 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    // ✅ User lookup
     const user = await Users.findById(userId).session(session);
-    if (!user) {
-      throw new Error(`User not found: ${userId}`);
-    }
+    if (!user) throw new Error(`User not found: ${userId}`);
 
     const orderItems = [];
 
     for (const item of selectedItems) {
-      // ✅ Product lookup
       const product = await Product.findById(item.product).session(session);
-      if (!product) {
-        throw new Error(`Product not found: ${item.product}`);
-      }
+      if (!product) throw new Error(`Product not found: ${item.product}`);
 
-      // ✅ Product field validation
       const requiredFields = ["productName", "price", "image", "category"];
       const missing = requiredFields.filter(
         (field) => product[field] === undefined || product[field] === null
@@ -66,7 +58,6 @@ router.post("/", async (req, res) => {
         );
       }
 
-      // ✅ Stock check
       if (product.stock < item.quantity) {
         throw new Error(`Insufficient stock for ${product.productName}`);
       }
@@ -77,17 +68,13 @@ router.post("/", async (req, res) => {
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
-        status: "For approval",
+        status: "For Approval", // ✅ aligned casing
       });
     }
 
-    console.log("🧾 Final orderItems before save:", orderItems);
-
-    // ✅ Normalize paymentMethod to match schema enum
     const normalizedPaymentMethod =
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
-    // ✅ Order creation
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -100,27 +87,20 @@ router.post("/", async (req, res) => {
       payment: {
         referenceId,
         chargeId,
-        amount: paidAmount || totalOrder, // ✅ always set
-        status: "Pending",
+        amount: paidAmount || totalOrder,
+        status: "Pending", // ✅ webhook will update later
         paidAt: null,
         method: "GCash",
       },
     });
 
-    console.log("🧩 newOrder before save:", newOrder);
-
     const savedOrder = await newOrder.save({ session });
-
     if (!savedOrder || !savedOrder._id) {
-      console.warn("⚠️ Order save failed or _id missing:", savedOrder);
       await session.abortTransaction();
       session.endSession();
-      return res
-        .status(500)
-        .json({ error: "Order save failed or _id missing" });
+      return res.status(500).json({ error: "Order save failed" });
     }
 
-    // ✅ Confirm retrieval
     const confirmed = await Order.findById(savedOrder._id)
       .session(session)
       .populate({
@@ -131,45 +111,31 @@ router.post("/", async (req, res) => {
       });
 
     if (!confirmed) {
-      console.warn("❌ Failed to retrieve confirmed order:", savedOrder._id);
       await session.abortTransaction();
       session.endSession();
       return res.status(500).json({ error: "Failed to retrieve saved order" });
     }
 
-    console.log("✅ Order saved:", savedOrder._id);
-
-    // ✅ StockLog entries
+    // StockLog entries
     for (const item of selectedItems) {
-      const logEntry = {
-        productId: item.product,
-        orderId: savedOrder._id,
-        change: -Math.abs(item.quantity || 0),
-        reason: "Order",
-      };
-
-      const missingFields = Object.entries(logEntry)
-        .filter(([_, value]) => value === undefined || value === null)
-        .map(([key]) => key);
-
-      if (missingFields.length > 0) {
-        console.warn(
-          "⚠️ Skipping StockLog entry due to missing fields:",
-          missingFields,
-          logEntry
-        );
-        continue;
-      }
-
       try {
-        console.log("📦 Creating StockLog entry:", logEntry);
-        await StockLog.create([logEntry], { session });
+        await StockLog.create(
+          [
+            {
+              productId: item.product,
+              orderId: savedOrder._id,
+              change: -Math.abs(item.quantity || 0),
+              reason: "Order",
+            },
+          ],
+          { session }
+        );
       } catch (logErr) {
         console.warn("⚠️ Failed to log stock change:", logErr.message);
       }
     }
 
-    // ✅ Cart cleanup
+    // Cart cleanup
     await Cart.findOneAndUpdate(
       { userId },
       {
@@ -185,15 +151,14 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    console.log("🧾 Final response order:", confirmed.items);
-
     res.status(201).json(confirmed);
   } catch (err) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
+    if (session.inTransaction()) await session.abortTransaction();
     session.endSession();
-    console.error("❌ Error during checkout:", err);
+    console.error(
+      "❌ Error during checkout:",
+      err.response?.data || err.message
+    );
     res.status(500).json({ error: err.message });
   }
 });

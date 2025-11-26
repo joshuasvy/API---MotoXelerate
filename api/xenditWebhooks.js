@@ -14,9 +14,9 @@ router.post("/", async (req, res) => {
   }
 
   const data = req.body.data || {};
-  const referenceId = data.reference_id; // ✅ consistent naming
+  const referenceId = data.reference_id;
   const rawStatus = data.status;
-  const amount = data.charge_amount ?? null; // ✅ use charge_amount
+  const amount = data.charge_amount ?? null;
 
   if (!referenceId || typeof referenceId !== "string") {
     console.warn("⚠️ Missing or invalid referenceId:", referenceId);
@@ -32,13 +32,22 @@ router.post("/", async (req, res) => {
     s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
   const normalizedStatus = capitalize(rawStatus);
 
-  const statusMap = {
-    Succeeded: "Processing",
+  // Map payment status to orderRequest lifecycle
+  const orderStatusMap = {
+    Succeeded: "To ship",
     Failed: "Payment Failed",
     Expired: "Payment Expired",
   };
 
-  const orderStatus = statusMap[normalizedStatus] || "Pending";
+  // Map payment status to appointment lifecycle
+  const appointmentStatusMap = {
+    Succeeded: "Confirmed",
+    Failed: "Cancelled",
+    Expired: "Cancelled",
+  };
+
+  const orderRequestStatus = orderStatusMap[normalizedStatus] || "For Approval";
+  const appointmentStatus = appointmentStatusMap[normalizedStatus] || "Pending";
 
   console.log("🔍 Normalized status:", normalizedStatus);
   console.log("💰 Incoming amount:", amount ?? "⚠️ Missing charge_amount");
@@ -51,8 +60,9 @@ router.post("/", async (req, res) => {
         $set: {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
-          "payment.paidAt": new Date(),
-          status: orderStatus,
+          "payment.paidAt":
+            normalizedStatus === "Succeeded" ? new Date() : null,
+          orderRequest: orderRequestStatus,
         },
       },
       { new: true }
@@ -62,7 +72,8 @@ router.post("/", async (req, res) => {
       console.log("✅ Order updated:", {
         orderId: updated._id,
         referenceId,
-        status: normalizedStatus,
+        paymentStatus: normalizedStatus,
+        orderRequest: updated.orderRequest,
       });
 
       // Roll back stock if payment failed/expired
@@ -87,7 +98,9 @@ router.post("/", async (req, res) => {
         $set: {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
-          "payment.paidAt": new Date(),
+          "payment.paidAt":
+            normalizedStatus === "Succeeded" ? new Date() : null,
+          status: appointmentStatus,
         },
       },
       { new: true }
@@ -104,7 +117,8 @@ router.post("/", async (req, res) => {
     console.log("✅ Appointment updated:", {
       appointmentId: updated._id,
       referenceId,
-      status: normalizedStatus,
+      paymentStatus: normalizedStatus,
+      status: updated.status,
     });
 
     return res.status(200).send("Webhook received (Appointment)");
