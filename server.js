@@ -22,21 +22,33 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: { origin: "*" },
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
 
-  // Example: broadcast appointment updates
-  socket.on("appointment:new", (data) => {
-    io.emit("appointment:update", data);
+  // Defensive log: track disconnects
+  socket.on("disconnect", (reason) => {
+    console.log(`⚠️ Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 
-  // Example: broadcast order updates
+  // Defensive log: appointment events
+  socket.on("appointment:new", (data) => {
+    console.log("📥 appointment:new received:", data);
+    io.emit("appointment:update", data);
+    console.log("📤 appointment:update broadcasted");
+  });
+
+  // Defensive log: order events
   socket.on("order:new", (data) => {
+    console.log("📥 order:new received:", data);
     io.emit("order:update", data);
+    console.log("📤 order:update broadcasted");
+  });
+
+  // Catch-all for unexpected events
+  socket.onAny((event, ...args) => {
+    console.log(`🔎 Unhandled socket event: ${event}`, args);
   });
 });
 
@@ -77,7 +89,7 @@ app.use((req, res) => {
 });
 
 // Server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 2004;
 server.listen(PORT, () => {
   console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
 });
