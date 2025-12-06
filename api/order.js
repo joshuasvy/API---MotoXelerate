@@ -276,6 +276,10 @@ router.get("/user/:userId", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid order ID" });
+  }
+
   try {
     const order = await Order.findById(id).populate("items.product");
 
@@ -284,17 +288,12 @@ router.get("/:id", async (req, res) => {
     }
 
     const formatted = {
-      orderId: order._id,
+      orderId: order._id.toString(),
       customerName: order.customerName,
       orderDate: order.createdAt,
       totalOrder: order.totalOrder,
       paymentMethod: order.paymentMethod ?? "N/A",
-      paymentStatus:
-        order.payment &&
-        typeof order.payment === "object" &&
-        "status" in order.payment
-          ? order.payment.status
-          : "Missing payment status",
+      paymentStatus: order.payment?.status ?? "Missing payment status",
       paidAt: order.payment?.paidAt ?? null,
       deliveryAddress: order.deliveryAddress || "No address provided",
       notes: order.notes || "",
@@ -311,7 +310,7 @@ router.get("/:id", async (req, res) => {
         }
 
         return {
-          productId: product?._id ?? `missing-${index}`,
+          productId: product?._id?.toString() ?? `missing-${index}`,
           productName: product?.productName ?? null,
           specification: product?.specification ?? null,
           price: product?.price ?? null,
@@ -322,12 +321,6 @@ router.get("/:id", async (req, res) => {
         };
       }),
     };
-    console.log("✅ Sending formatted order:", formatted);
-    console.log("🧾 Final formatted order:", {
-      payment: order.payment,
-      paymentStatus: order.payment?.status,
-      paymentMethod: order.paymentMethod,
-    });
 
     res.status(200).json({
       ...formatted,
