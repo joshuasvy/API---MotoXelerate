@@ -1,9 +1,9 @@
-import { Server } from "socket.io";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
+import { Server } from "socket.io";
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
 import adminRoutes from "./api/admin.js";
@@ -19,13 +19,24 @@ import redirectRoutes from "./redirects/redirect.js";
 import mockWebhook from "./api/mockWebhook.js";
 
 dotenv.config();
+
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Socket.IO instance
-const io = new Server(server, { cors: { origin: "*" } });
+// ✅ Socket.IO setup with explicit transports + CORS
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:3000", // dev
+      "https://api-motoxelerate.onrender.com", // prod
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  transports: ["websocket", "polling"], // allow fallback
+});
 
-// ✅ Connection handler
+// ✅ Socket.IO connection handler
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
 
@@ -33,9 +44,12 @@ io.on("connection", (socket) => {
     console.log(`⚠️ Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 
-  // Catch-all for unexpected events
   socket.onAny((event, ...args) => {
-    console.log(`🔎 Unhandled socket event: ${event}`, args);
+    console.log(`🔎 Socket event: ${event}`, args);
+  });
+
+  socket.on("error", (err) => {
+    console.error("❌ Socket error:", err);
   });
 });
 
@@ -43,16 +57,18 @@ io.on("connection", (socket) => {
 app.use(cors());
 app.use(express.json());
 
-// ✅ Root route
-app.get("/", (req, res) => {
-  res.send("Connected!");
-});
+// ✅ Health check route (useful for Render)
+app.get("/health", (req, res) => res.send("OK"));
+app.get("/", (req, res) => res.send("Connected!"));
 
 // ✅ MongoDB connection
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.log("❌ MongoDB connection error:", err));
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ✅ API routes
 app.use("/api/user", userRoutes);
@@ -71,7 +87,7 @@ app.use("/api/gcash/webhook", mockWebhook);
 
 // ✅ 404 handler
 app.use((req, res) => {
-  console.log("❌ 404 hit:", req.method, req.originalUrl);
+  console.warn("❌ 404 hit:", req.method, req.originalUrl);
   res.status(404).json({ message: "Route Not Found" });
 });
 
