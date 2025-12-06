@@ -288,15 +288,15 @@ router.get("/:id", async (req, res) => {
     }
 
     const formatted = {
-      id: order._id.toString(), // ✅ rename from orderId → id
-      name: order.customerName, // ✅ rename from customerName → name
+      id: order._id.toString(), // ✅ send as "id"
+      name: order.customerName, // ✅ rename for frontend
       dateRaw: order.orderDate || order.createdAt,
       date: new Date(order.orderDate || order.createdAt).toLocaleDateString(),
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       total: `₱${order.totalOrder.toLocaleString()}`,
       paymentStatus: order.payment?.status ?? "N/A",
       paymentMethod: order.paymentMethod ?? "N/A",
-      status: order.orderRequest ?? "N/A", // ✅ include orderRequest as status
+      status: order.orderRequest ?? "N/A", // ✅ include orderRequest
       address: order.deliveryAddress || "No address provided",
       items: order.items.map((item, index) => {
         const product = item.product;
@@ -313,10 +313,7 @@ router.get("/:id", async (req, res) => {
       }),
     };
 
-    res.status(200).json({
-      ...formatted,
-      payment: order.payment,
-    });
+    res.status(200).json(formatted);
   } catch (err) {
     console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
