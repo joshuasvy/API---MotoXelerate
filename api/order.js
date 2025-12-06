@@ -288,36 +288,27 @@ router.get("/:id", async (req, res) => {
     }
 
     const formatted = {
-      orderId: order._id.toString(),
-      customerName: order.customerName,
-      orderDate: order.createdAt,
-      totalOrder: order.totalOrder,
+      id: order._id.toString(), // ✅ rename from orderId → id
+      name: order.customerName, // ✅ rename from customerName → name
+      dateRaw: order.orderDate || order.createdAt,
+      date: new Date(order.orderDate || order.createdAt).toLocaleDateString(),
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      total: `₱${order.totalOrder.toLocaleString()}`,
+      paymentStatus: order.payment?.status ?? "N/A",
       paymentMethod: order.paymentMethod ?? "N/A",
-      paymentStatus: order.payment?.status ?? "Missing payment status",
-      paidAt: order.payment?.paidAt ?? null,
-      deliveryAddress: order.deliveryAddress || "No address provided",
-      notes: order.notes || "",
+      status: order.orderRequest ?? "N/A", // ✅ include orderRequest as status
+      address: order.deliveryAddress || "No address provided",
       items: order.items.map((item, index) => {
         const product = item.product;
-        const isMissing =
-          !product || typeof product !== "object" || !product._id;
-
-        if (isMissing) {
-          console.warn(
-            `⚠️ Order ${order._id} item[${index}] missing product:`,
-            item
-          );
-        }
-
         return {
           productId: product?._id?.toString() ?? `missing-${index}`,
           productName: product?.productName ?? null,
-          specification: product?.specification ?? null,
-          price: product?.price ?? null,
-          image: product?.image ?? null,
+          price:
+            product?.price != null
+              ? `₱${product.price.toLocaleString()}`
+              : null,
           quantity: item.quantity,
           status: item.status,
-          read: item.read ?? false,
         };
       }),
     };
