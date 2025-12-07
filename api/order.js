@@ -281,46 +281,16 @@ router.get("/:id", async (req, res) => {
   }
 
   try {
-    const order = await Order.findById(id).populate("items.product");
+    const order = await Order.findById(id).populate("items.product").lean(); // ✅ returns plain JS object with all fields
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const formatted = {
-      id: order._id.toString(),
-      name: order.customerName,
-      email: order.customerEmail ?? "N/A",
-      contact: order.customerPhone ?? "N/A",
-      dateRaw: order.orderDate || order.createdAt,
-      date: new Date(order.orderDate || order.createdAt).toLocaleDateString(),
-      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
-      total: `₱${order.totalOrder.toLocaleString()}`,
-      paymentStatus: order.payment?.status ?? "N/A",
-      paymentMethod: order.paymentMethod ?? "N/A",
-      status: order.orderRequest ?? "N/A",
-      address: order.deliveryAddress || "No address provided",
-      items: order.items.map((item, index) => {
-        const product = item.product;
-        return {
-          productId: product?._id?.toString() ?? `missing-${index}`,
-          productName: product?.productName ?? null,
-          price:
-            product?.price != null
-              ? `₱${product.price.toLocaleString()}`
-              : null,
-          quantity: item.quantity,
-          status: item.status,
-        };
-      }),
-    };
-    console.log("🔍 Order detail payload with email/phone:", {
-      id: formatted.id,
-      email: formatted.email,
-      contact: formatted.contact,
-    });
+    // 🛡️ Defensive log
+    console.log("🔍 Full order payload:", order);
 
-    res.status(200).json(formatted);
+    res.status(200).json(order); // ✅ send everything, no manual formatting
   } catch (err) {
     console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
