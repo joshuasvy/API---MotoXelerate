@@ -1,47 +1,42 @@
-// cleanup.js
 import mongoose from "mongoose";
 import Invoice from "./models/Invoice.js";
+import User from "./models/Users.js";
 
-async function removeDuplicateInvoices() {
-  try {
-    // ✅ Connect to MongoDB
-    await mongoose.connect(
-      "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate",
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+async function backfillInvoiceContacts() {
+  await mongoose.connect(process.env.MONGO_URI);
+
+  const invoices = await Invoice.find({
+    $or: [
+      { customerEmail: { $exists: false } },
+      { customerPhone: { $exists: false } },
+    ],
+  });
+
+  console.log(`Found ${invoices.length} invoices missing contact info`);
+
+  for (const inv of invoices) {
+    try {
+      // Assuming sourceId points to the order, and order has userId
+      // If you store userId directly in invoice, adjust accordingly
+      const user = await User.findById(inv.sourceId); // or order.userId if sourceId is an order
+      if (!user) {
+        console.warn(`⚠️ No user found for invoice ${inv._id}`);
+        continue;
       }
-    );
-    console.log("✅ Connected to MongoDB");
 
-    // ✅ Group by sourceId + referenceId
-    const invoices = await Invoice.aggregate([
-      { $sort: { createdAt: 1 } }, // ensure oldest first
-      {
-        $group: {
-          _id: { sourceId: "$sourceId", referenceId: "$referenceId" },
-          ids: { $push: "$_id" },
-          count: { $sum: 1 },
-        },
-      },
-      { $match: { count: { $gt: 1 } } },
-    ]);
+      inv.customerEmail = user.email;
+      inv.customerPhone = user.contact;
 
-    for (const group of invoices) {
-      const [keep, ...remove] = group.ids;
-      await Invoice.deleteMany({ _id: { $in: remove } });
+      await inv.save();
       console.log(
-        `🧹 Cleaned ${remove.length} duplicates for order ${group._id.sourceId}`
+        `✅ Updated invoice ${inv.invoiceNumber} with ${user.email}, ${user.contact}`
       );
+    } catch (err) {
+      console.error(`❌ Failed to update invoice ${inv._id}`, err);
     }
-
-    console.log("✅ Duplicate invoices removed");
-  } catch (err) {
-    console.error("❌ Error cleaning invoices:", err);
-  } finally {
-    await mongoose.disconnect();
-    process.exit();
   }
+
+  await mongoose.disconnect();
 }
 
-removeDuplicateInvoices();
+backfillInvoiceContacts();

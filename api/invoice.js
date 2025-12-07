@@ -41,8 +41,8 @@ router.post("/from-order/:orderId", async (req, res) => {
       sourceId: order._id,
       customerName: order.customerName,
       customerAddress: order.deliveryAddress,
-      customerEmail: order.customerEmail,
-      customerPhone: order.customerContact,
+      customerEmail: user.email,
+      customerPhone: user.contact,
       paymentMethod: order.payment?.method,
       paymentStatus,
       referenceId: order.payment?.referenceId,
@@ -75,8 +75,6 @@ router.post("/from-order/:orderId", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
-
-    console.log("✅ Invoices fetched:", invoices.length);
     res.json(invoices);
   } catch (err) {
     console.error("❌ Error fetching invoices:", err.message, err.stack);
@@ -92,13 +90,6 @@ router.get("/:id", async (req, res) => {
       console.warn("⚠️ Invoice not found:", req.params.id);
       return res.status(404).json({ error: "Invoice not found" });
     }
-
-    console.log(
-      "✅ Invoice fetched:",
-      invoice._id,
-      "InvoiceNumber:",
-      invoice.invoiceNumber
-    );
     res.json(invoice);
   } catch (err) {
     console.error("❌ Error fetching invoice:", err.message, err.stack);
