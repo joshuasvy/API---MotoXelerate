@@ -16,6 +16,7 @@ import notificationRoute from "./api/notification.js";
 import xenditGcashRoutes from "./api/xenditGcash.js";
 import xenditWebhooks from "./api/xenditWebhooks.js";
 import redirectRoutes from "./redirects/redirect.js";
+import invoiceRoutes from "./api/invoice.js";
 import mockWebhook from "./api/mockWebhook.js";
 
 dotenv.config();
@@ -74,6 +75,7 @@ app.use("/api/notification", notificationRoute);
 app.use("/api/gcash", xenditGcashRoutes);
 app.use("/api/webhooks", xenditWebhooks);
 app.use("/api/redirect", redirectRoutes);
+app.use("/api/invoice", invoiceRoutes);
 app.use("/api/gcash/webhook", mockWebhook);
 
 app.use((req, res) => {

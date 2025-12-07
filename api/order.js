@@ -69,7 +69,7 @@ router.post("/", async (req, res) => {
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
-        status: "For Approval", // ✅ aligned casing
+        status: "For Approval",
       });
     }
 
@@ -89,7 +89,7 @@ router.post("/", async (req, res) => {
         referenceId,
         chargeId,
         amount: paidAmount || totalOrder,
-        status: "Pending", // ✅ webhook will update later
+        status: "Pending",
         paidAt: null,
         method: "GCash",
       },
@@ -118,7 +118,6 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: "Failed to retrieve saved order" });
     }
 
-    // StockLog entries
     for (const item of selectedItems) {
       try {
         await StockLog.create(
@@ -137,7 +136,6 @@ router.post("/", async (req, res) => {
       }
     }
 
-    // Cart cleanup
     await Cart.findOneAndUpdate(
       { userId },
       {
