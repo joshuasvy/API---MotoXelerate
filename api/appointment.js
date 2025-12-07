@@ -6,11 +6,6 @@ import Users from "../models/Users.js";
 
 const router = express.Router();
 
-router.use((req, res, next) => {
-  console.log("📡 Appointment route hit:", req.method, req.originalUrl);
-  next();
-});
-
 router.post("/", authToken, async (req, res) => {
   try {
     const { date, time, service_Type, service_Charge } = req.body;

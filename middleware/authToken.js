@@ -5,7 +5,6 @@ import Admin from "../models/Admin.js";
 export const authToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    console.log("🔐 Incoming Authorization header:", authHeader);
 
     if (!authHeader) {
       return res
@@ -19,7 +18,6 @@ export const authToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    console.log("🔐 Extracted token preview:", token?.slice(0, 20));
 
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
