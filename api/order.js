@@ -314,6 +314,11 @@ router.get("/:id", async (req, res) => {
         };
       }),
     };
+    console.log("🔍 Order detail payload with email/phone:", {
+      id: formatted.id,
+      email: formatted.email,
+      contact: formatted.contact,
+    });
 
     res.status(200).json(formatted);
   } catch (err) {
