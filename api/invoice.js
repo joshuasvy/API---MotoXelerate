@@ -44,6 +44,8 @@ router.post("/from-order/:orderId", async (req, res) => {
       sourceId: order._id,
       customerName: order.customerName,
       customerAddress: order.deliveryAddress,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerContact,
       paymentMethod: order.payment?.method,
       paymentStatus,
       referenceId: order.payment?.referenceId,
@@ -56,7 +58,7 @@ router.post("/from-order/:orderId", async (req, res) => {
       })),
       subtotal: order.totalOrder,
       total: order.totalOrder,
-      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "paid" : "unpaid",
+      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid",
     });
 
     console.log("💾 Saving invoice...");
@@ -74,8 +76,6 @@ router.post("/from-order/:orderId", async (req, res) => {
   }
 });
 
-// ✅ Get all invoices
-// ✅ Get all invoices
 router.get("/", async (req, res) => {
   console.log("📥 [GET] /api/invoice → Fetching all invoices...");
 
@@ -90,7 +90,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Get single invoice by ID
 router.get("/:id", async (req, res) => {
   console.log("📥 [GET] /api/invoice/:id → Fetching invoice:", req.params.id);
 
