@@ -11,13 +11,23 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     const { amount, userId, type, appointmentId, orderId } = req.body;
+    console.log("🧪 Incoming GCash request:", {
+      amount,
+      userId,
+      type,
+      appointmentId,
+      orderId,
+    });
 
+    // Defensive check: required fields
     if (!amount || !userId) {
+      console.warn("⚠️ Missing amount or userId:", { amount, userId });
       return res.status(400).json({ error: "Missing amount or userId" });
     }
 
     const xenditKey = process.env.XENDIT_GCASH_API;
     if (!xenditKey) {
+      console.error("❌ Missing Xendit API key");
       return res.status(500).json({ error: "Missing Xendit API key" });
     }
 
@@ -25,9 +35,11 @@ router.post("/", async (req, res) => {
     const referenceId = `XenditPay-${userId}-${Date.now()}-${Math.floor(
       Math.random() * 10000
     )}`;
+    console.log("🔑 Generated referenceId:", referenceId);
 
     const safeAmount = Math.floor(Number(amount));
     if (isNaN(safeAmount) || safeAmount <= 0) {
+      console.warn("⚠️ Invalid amount provided:", amount);
       return res.status(400).json({ error: "Invalid amount" });
     }
 
@@ -43,6 +55,7 @@ router.post("/", async (req, res) => {
       },
       callback_url: callbackUrl,
     };
+    console.log("📦 Sending payload to Xendit:", payload);
 
     const response = await axios.post(
       "https://api.xendit.co/ewallets/charges",
@@ -55,12 +68,16 @@ router.post("/", async (req, res) => {
       }
     );
 
+    console.log("✅ Xendit response status:", response.status);
+    console.log("✅ Xendit response data:", response.data);
+
     if (![200, 201, 202].includes(response.status)) {
       throw new Error(`Unexpected response status: ${response.status}`);
     }
 
+    let updatedDoc = null;
     if (type === "appointment" && appointmentId) {
-      await Appointments.findByIdAndUpdate(appointmentId, {
+      updatedDoc = await Appointments.findByIdAndUpdate(appointmentId, {
         $set: {
           "payment.referenceId": referenceId,
           "payment.chargeId": response.data.id,
@@ -70,8 +87,13 @@ router.post("/", async (req, res) => {
           "payment.method": "GCash",
         },
       });
+      console.log(
+        updatedDoc
+          ? `✅ Appointment updated: ${appointmentId}`
+          : `⚠️ Appointment not found: ${appointmentId}`
+      );
     } else if (type === "order" && orderId) {
-      await Orders.findByIdAndUpdate(orderId, {
+      updatedDoc = await Orders.findByIdAndUpdate(orderId, {
         $set: {
           "payment.referenceId": referenceId,
           "payment.chargeId": response.data.id,
@@ -81,17 +103,32 @@ router.post("/", async (req, res) => {
           "payment.method": "GCash",
         },
       });
+      console.log(
+        updatedDoc
+          ? `✅ Order updated: ${orderId}`
+          : `⚠️ Order not found: ${orderId}`
+      );
+    } else {
+      console.warn(
+        "⚠️ No valid appointmentId or orderId provided for type:",
+        type
+      );
     }
 
     res.json({
-      checkout_url: response.data.actions.desktop_web_checkout_url,
-      mobile_checkout_url: response.data.actions.mobile_web_checkout_url,
+      checkout_url: response.data.actions?.desktop_web_checkout_url,
+      mobile_checkout_url: response.data.actions?.mobile_web_checkout_url,
       reference_id: referenceId,
       charge_id: response.data.id,
       paid_amount: safeAmount,
     });
   } catch (err) {
-    console.error("❌ GCash route error:", err.response?.data || err.message);
+    console.error(
+      "❌ GCash route error:",
+      err.message,
+      err.stack,
+      err.response?.data
+    );
     res.status(500).json({ error: "GCash payment failed" });
   }
 });

@@ -36,7 +36,7 @@ const orderSchema = new mongoose.Schema(
     notes: { type: String },
     read: { type: Boolean, default: false },
     payment: {
-      referenceId: { type: String, unique: true, index: true },
+      referenceId: { type: String, unique: true, sparse: true },
       chargeId: { type: String, default: null },
       amount: { type: Number, required: true },
       status: {
