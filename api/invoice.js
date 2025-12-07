@@ -6,12 +6,7 @@ const router = express.Router();
 
 // ✅ Generate invoice from an existing order
 router.post("/from-order/:orderId", async (req, res) => {
-  console.log("🧾 [Invoice Route] Incoming request to /from-order/:orderId");
-  console.log("➡️ Params:", req.params);
-  console.log("➡️ Body:", req.body);
-
   try {
-    // Step 1: Fetch order
     console.log("🔍 Looking up order:", req.params.orderId);
     const order = await Orders.findById(req.params.orderId).populate(
       "items.product"
@@ -23,8 +18,16 @@ router.post("/from-order/:orderId", async (req, res) => {
     }
     console.log("✅ Order found:", order._id, "Customer:", order.customerName);
 
-    // Step 2: Build invoice object
-    console.log("🛠️ Building invoice from order...");
+    // ✅ Defensive payment status fallback
+    const paymentStatus =
+      order.payment?.status ||
+      order.paymentStatus ||
+      order.orderRequest ||
+      "Pending";
+
+    console.log("💳 Payment status detected:", paymentStatus);
+
+    // ✅ Build invoice object
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "order",
@@ -32,33 +35,28 @@ router.post("/from-order/:orderId", async (req, res) => {
       customerName: order.customerName,
       customerAddress: order.deliveryAddress,
       paymentMethod: order.payment?.method,
-      paymentStatus: order.payment?.status,
+      paymentStatus,
       referenceId: order.payment?.referenceId,
       paidAt: order.payment?.paidAt,
-      items: order.items.map((item) => {
-        console.log("📦 Item:", {
-          productName: item.product?.productName,
-          price: item.product?.price,
-          quantity: item.quantity,
-        });
-        return {
-          description: item.product?.productName ?? "Unknown Product",
-          quantity: item.quantity,
-          unitPrice: item.product?.price ?? 0,
-          lineTotal: item.quantity * (item.product?.price ?? 0),
-        };
-      }),
+      items: order.items.map((item) => ({
+        description: item.product?.productName ?? "Unknown Product",
+        quantity: item.quantity,
+        unitPrice: item.product?.price ?? 0,
+        lineTotal: item.quantity * (item.product?.price ?? 0),
+      })),
       subtotal: order.totalOrder,
       total: order.totalOrder,
-      status: order.payment?.status === "Succeeded" ? "paid" : "unpaid",
+      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "paid" : "unpaid",
     });
 
-    // Step 3: Save invoice
     console.log("💾 Saving invoice...");
     const savedInvoice = await invoice.save();
     console.log("✅ Invoice saved:", savedInvoice._id);
 
-    // Step 4: Respond
+    // ✅ Link invoice back to order
+    order.invoiceId = savedInvoice._id;
+    await order.save();
+
     res.status(201).json(savedInvoice);
   } catch (err) {
     console.error("❌ Error in /from-order route:", err.message, err.stack);
