@@ -167,20 +167,13 @@ router.post("/", async (req, res) => {
 
 // 📦 Get all orders or filter by userId and status
 router.get("/", async (req, res) => {
-  const { userId, status } = req.query;
-
-  const filter = {};
-  if (userId) filter.user = userId;
-  if (status) filter.status = status; // keep exact casing
-
   try {
-    const orders = await Order.find(filter).sort({ createdAt: -1 });
+    const orders = await Order.find().populate("items.product").lean(); // ✅ plain object with all fields
+
     res.status(200).json(orders);
   } catch (err) {
-    res.status(500).json({
-      message: "Failed to fetch orders",
-      error: err.message,
-    });
+    console.error("❌ Error fetching orders:", err.message);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
@@ -281,16 +274,13 @@ router.get("/:id", async (req, res) => {
   }
 
   try {
-    const order = await Order.findById(id).populate("items.product").lean(); // ✅ returns plain JS object with all fields
+    const order = await Order.findById(id).populate("items.product").lean(); // ✅ plain object with all fields
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // 🛡️ Defensive log
-    console.log("🔍 Full order payload:", order);
-
-    res.status(200).json(order); // ✅ send everything, no manual formatting
+    res.status(200).json(order); // ✅ send everything
   } catch (err) {
     console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
