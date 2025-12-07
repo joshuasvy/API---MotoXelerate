@@ -13,6 +13,10 @@ const router = express.Router();
 // 🛒 Create a new order
 router.post("/", async (req, res) => {
   console.log("🧪 Incoming payload:", JSON.stringify(req.body, null, 2));
+  console.log("📥 Payment fields received:", req.body.payment);
+  if (!req.body.payment?.referenceId) {
+    console.warn("⚠️ Missing referenceId in order payload");
+  }
 
   const {
     userId,
