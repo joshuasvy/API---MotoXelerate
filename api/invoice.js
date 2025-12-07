@@ -4,7 +4,6 @@ import Orders from "../models/Orders.js";
 
 const router = express.Router();
 
-// ✅ Generate invoice from an existing order
 router.post("/from-order/:orderId", async (req, res) => {
   try {
     console.log("🔍 Looking up order:", req.params.orderId);
@@ -28,7 +27,6 @@ router.post("/from-order/:orderId", async (req, res) => {
       return res.status(200).json(existingInvoice);
     }
 
-    // ✅ Defensive payment status fallback
     const paymentStatus =
       order.payment?.status ||
       order.paymentStatus ||
@@ -37,7 +35,6 @@ router.post("/from-order/:orderId", async (req, res) => {
 
     console.log("💳 Payment status detected:", paymentStatus);
 
-    // ✅ Build invoice object
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "order",
@@ -65,7 +62,6 @@ router.post("/from-order/:orderId", async (req, res) => {
     const savedInvoice = await invoice.save();
     console.log("✅ Invoice saved:", savedInvoice._id);
 
-    // ✅ Link invoice back to order
     order.invoiceId = savedInvoice._id;
     await order.save();
 
@@ -77,8 +73,6 @@ router.post("/from-order/:orderId", async (req, res) => {
 });
 
 router.get("/", async (req, res) => {
-  console.log("📥 [GET] /api/invoice → Fetching all invoices...");
-
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
 
@@ -91,8 +85,6 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  console.log("📥 [GET] /api/invoice/:id → Fetching invoice:", req.params.id);
-
   try {
     const invoice = await Invoice.findById(req.params.id);
 
