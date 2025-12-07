@@ -12,7 +12,7 @@ const router = express.Router();
 
 // 🛒 Create a new order
 router.post("/", async (req, res) => {
-  console.log("🧪 Incoming payload:", req.body);
+  console.log("🧪 Incoming payload:", JSON.stringify(req.body, null, 2));
 
   const {
     userId,
@@ -26,13 +26,17 @@ router.post("/", async (req, res) => {
     paidAmount,
   } = req.body;
 
+  // Defensive check: basic payload validation
   if (
     !userId ||
     !selectedItems ||
     !Array.isArray(selectedItems) ||
     selectedItems.length === 0
   ) {
-    console.warn("⚠️ Missing or invalid checkout data");
+    console.warn("⚠️ Missing or invalid checkout data:", {
+      userId,
+      selectedItems,
+    });
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
 
@@ -40,31 +44,48 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
+    console.log("🔍 Looking up user:", userId);
     const user = await Users.findById(userId).session(session);
-    if (!user) throw new Error(`User not found: ${userId}`);
+    if (!user) {
+      console.error("❌ User not found:", userId);
+      throw new Error(`User not found: ${userId}`);
+    }
 
     const orderItems = [];
 
     for (const item of selectedItems) {
+      console.log("🔍 Checking product:", item.product);
       const product = await Product.findById(item.product).session(session);
-      if (!product) throw new Error(`Product not found: ${item.product}`);
+      if (!product) {
+        console.error("❌ Product not found:", item.product);
+        throw new Error(`Product not found: ${item.product}`);
+      }
 
       const requiredFields = ["productName", "price", "image", "category"];
       const missing = requiredFields.filter(
         (field) => product[field] === undefined || product[field] === null
       );
       if (missing.length > 0) {
+        console.error(
+          `❌ Product ${product._id} missing fields: ${missing.join(", ")}`
+        );
         throw new Error(
           `Product ${product._id} is missing fields: ${missing.join(", ")}`
         );
       }
 
       if (product.stock < item.quantity) {
+        console.error(
+          `❌ Insufficient stock for ${product.productName}. Available: ${product.stock}, Requested: ${item.quantity}`
+        );
         throw new Error(`Insufficient stock for ${product.productName}`);
       }
 
       product.stock -= item.quantity;
       await product.save({ session });
+      console.log(
+        `✅ Stock updated for ${product.productName}. Remaining: ${product.stock}`
+      );
 
       orderItems.push({
         product: product._id,
@@ -76,6 +97,26 @@ router.post("/", async (req, res) => {
     const normalizedPaymentMethod =
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
+    console.log("📦 Creating new order with payload:", {
+      userId,
+      customerName: `${user.firstName} ${user.lastName}`,
+      customerEmail: user.email,
+      customerPhone: user.contact,
+      items: orderItems,
+      totalOrder,
+      paymentMethod: normalizedPaymentMethod,
+      deliveryAddress: deliveryAddress || user.address,
+      notes,
+      payment: {
+        referenceId,
+        chargeId,
+        amount: paidAmount || totalOrder,
+        status: "Pending",
+        paidAt: null,
+        method: "GCash",
+      },
+    });
+
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -84,7 +125,6 @@ router.post("/", async (req, res) => {
       items: orderItems,
       totalOrder,
       paymentMethod: normalizedPaymentMethod,
-      orderRequest: "For Approval",
       deliveryAddress: deliveryAddress || user.address,
       notes,
       payment: {
@@ -98,8 +138,10 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
+    console.log("✅ Order saved:", savedOrder?._id);
 
     if (!savedOrder || !savedOrder._id) {
+      console.error("❌ Order save failed");
       await session.abortTransaction();
       session.endSession();
       return res.status(500).json({ error: "Order save failed" });
@@ -115,6 +157,7 @@ router.post("/", async (req, res) => {
       });
 
     if (!confirmed) {
+      console.error("❌ Failed to retrieve saved order:", savedOrder._id);
       await session.abortTransaction();
       session.endSession();
       return res.status(500).json({ error: "Failed to retrieve saved order" });
@@ -133,6 +176,9 @@ router.post("/", async (req, res) => {
           ],
           { session }
         );
+        console.log(
+          `📒 Stock log created for product ${item.product}, order ${savedOrder._id}`
+        );
       } catch (logErr) {
         console.warn("⚠️ Failed to log stock change:", logErr.message);
       }
@@ -149,18 +195,20 @@ router.post("/", async (req, res) => {
       },
       { new: true, session }
     );
+    console.log("🛒 Cart updated for user:", userId);
 
     await session.commitTransaction();
     session.endSession();
+    console.log("✅ Transaction committed successfully");
 
     res.status(201).json(confirmed);
   } catch (err) {
-    if (session.inTransaction()) await session.abortTransaction();
+    if (session.inTransaction()) {
+      console.warn("⚠️ Aborting transaction due to error");
+      await session.abortTransaction();
+    }
     session.endSession();
-    console.error(
-      "❌ Error during checkout:",
-      err.response?.data || err.message
-    );
+    console.error("❌ Error during checkout:", err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });

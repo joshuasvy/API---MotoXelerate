@@ -22,7 +22,7 @@ router.post("/", async (req, res) => {
     }
 
     const callbackUrl = "https://api-motoxelerate.onrender.com/api/webhooks";
-    const referenceId = `gcash-${userId}-${Date.now()}-${Math.floor(
+    const referenceId = `XenditPay-${userId}-${Date.now()}-${Math.floor(
       Math.random() * 10000
     )}`;
 

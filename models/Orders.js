@@ -31,11 +31,6 @@ const orderSchema = new mongoose.Schema(
       enum: ["GCash", "Cash on Delivery", "Pick up"],
       default: "GCash",
     },
-    orderRequest: {
-      type: String,
-      enum: ["For Approval", "To ship", "Ship", "Delivered", "Completed"],
-      default: "For Approval",
-    },
     orderDate: { type: Date, default: Date.now },
     deliveryAddress: { type: String },
     notes: { type: String },
@@ -43,7 +38,7 @@ const orderSchema = new mongoose.Schema(
     payment: {
       referenceId: { type: String, unique: true, index: true },
       chargeId: { type: String, default: null },
-      amount: { type: Number, required: true }, // ✅ required
+      amount: { type: Number, required: true },
       status: {
         type: String,
         enum: ["Pending", "Succeeded", "Failed"],
