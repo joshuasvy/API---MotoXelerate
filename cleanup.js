@@ -1,25 +1,47 @@
+// cleanup.js
 import mongoose from "mongoose";
-import Appointment from "./models/Appointments.js";
-import dotenv from "dotenv";
+import Invoice from "./models/Invoice.js";
 
-const toProperCase = (str = "") =>
-  str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+async function removeDuplicateInvoices() {
+  try {
+    // ✅ Connect to MongoDB
+    await mongoose.connect(
+      "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate",
+      {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      }
+    );
+    console.log("✅ Connected to MongoDB");
 
-dotenv.config();
+    // ✅ Group by sourceId + referenceId
+    const invoices = await Invoice.aggregate([
+      { $sort: { createdAt: 1 } }, // ensure oldest first
+      {
+        $group: {
+          _id: { sourceId: "$sourceId", referenceId: "$referenceId" },
+          ids: { $push: "$_id" },
+          count: { $sum: 1 },
+        },
+      },
+      { $match: { count: { $gt: 1 } } },
+    ]);
 
-(async () => {
-  await mongoose.connect(process.env.MONGO_URI);
-
-  const appointments = await Appointment.find({});
-  for (const a of appointments) {
-    const normalized = toProperCase(a.status);
-    if (normalized !== a.status) {
-      a.status = normalized;
-      await a.save();
-      console.log(`✅ Normalized: ${a._id} → ${normalized}`);
+    for (const group of invoices) {
+      const [keep, ...remove] = group.ids;
+      await Invoice.deleteMany({ _id: { $in: remove } });
+      console.log(
+        `🧹 Cleaned ${remove.length} duplicates for order ${group._id.sourceId}`
+      );
     }
-  }
 
-  await mongoose.disconnect();
-  console.log("✨ Done.");
-})();
+    console.log("✅ Duplicate invoices removed");
+  } catch (err) {
+    console.error("❌ Error cleaning invoices:", err);
+  } finally {
+    await mongoose.disconnect();
+    process.exit();
+  }
+}
+
+removeDuplicateInvoices();

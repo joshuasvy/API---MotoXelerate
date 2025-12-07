@@ -18,6 +18,16 @@ router.post("/from-order/:orderId", async (req, res) => {
     }
     console.log("✅ Order found:", order._id, "Customer:", order.customerName);
 
+    const existingInvoice = await Invoice.findOne({
+      sourceId: order._id,
+      referenceId: order.payment?.referenceId,
+    });
+
+    if (existingInvoice) {
+      console.log("⚠️ Invoice already exists:", existingInvoice._id);
+      return res.status(200).json(existingInvoice);
+    }
+
     // ✅ Defensive payment status fallback
     const paymentStatus =
       order.payment?.status ||
@@ -65,22 +75,42 @@ router.post("/from-order/:orderId", async (req, res) => {
 });
 
 // ✅ Get all invoices
+// ✅ Get all invoices
 router.get("/", async (req, res) => {
+  console.log("📥 [GET] /api/invoice → Fetching all invoices...");
+
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
+
+    console.log("✅ Invoices fetched:", invoices.length);
     res.json(invoices);
   } catch (err) {
+    console.error("❌ Error fetching invoices:", err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Get single invoice
+// ✅ Get single invoice by ID
 router.get("/:id", async (req, res) => {
+  console.log("📥 [GET] /api/invoice/:id → Fetching invoice:", req.params.id);
+
   try {
     const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+    if (!invoice) {
+      console.warn("⚠️ Invoice not found:", req.params.id);
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    console.log(
+      "✅ Invoice fetched:",
+      invoice._id,
+      "InvoiceNumber:",
+      invoice.invoiceNumber
+    );
     res.json(invoice);
   } catch (err) {
+    console.error("❌ Error fetching invoice:", err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
