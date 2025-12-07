@@ -37,8 +37,8 @@ const invoiceSchema = new mongoose.Schema(
     total: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["unpaid", "paid", "cancelled", "refunded"],
-      default: "unpaid",
+      enum: ["Unpaid", "Paid", "Cancelled", "Refunded"],
+      default: "Unpaid",
     },
   },
   { timestamps: true }
