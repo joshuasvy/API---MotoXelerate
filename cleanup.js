@@ -1,6 +1,9 @@
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Invoice from "./models/Invoice.js";
 import User from "./models/Users.js";
+
+dotenv.config();
 
 async function backfillInvoiceContacts() {
   await mongoose.connect(process.env.MONGO_URI);

@@ -1,6 +1,7 @@
 import express from "express";
-import Invoice from "../models/Invoice.js";
-import Orders from "../models/Orders.js";
+import Invoice from "../models/Invoice";
+import Orders from "../models/Order";
+import User from "../models/User";
 
 const router = express.Router();
 
@@ -15,13 +16,17 @@ router.post("/from-order/:orderId", async (req, res) => {
       console.warn("⚠️ Order not found:", req.params.orderId);
       return res.status(404).json({ error: "Order not found" });
     }
-    console.log("✅ Order found:", order._id, "Customer:", order.customerName);
+
+    const user = await User.findById(order.userId);
+    if (!user) {
+      console.warn("⚠️ No user found for order:", order._id);
+      return res.status(404).json({ error: "User not found for this order" });
+    }
 
     const existingInvoice = await Invoice.findOne({
       sourceId: order._id,
       referenceId: order.payment?.referenceId,
     });
-
     if (existingInvoice) {
       console.log("⚠️ Invoice already exists:", existingInvoice._id);
       return res.status(200).json(existingInvoice);
@@ -55,7 +60,7 @@ router.post("/from-order/:orderId", async (req, res) => {
       })),
       subtotal: order.totalOrder,
       total: order.totalOrder,
-      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid",
+      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid", // ✅ lowercase to match schema
     });
 
     console.log("💾 Saving invoice...");
