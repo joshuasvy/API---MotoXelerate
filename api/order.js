@@ -112,12 +112,12 @@ router.post("/", async (req, res) => {
       deliveryAddress: deliveryAddress || user.address,
       notes,
       payment: {
-        referenceId,
-        chargeId,
-        amount: paidAmount || totalOrder,
-        status: "Pending",
+        referenceId: payment?.referenceId,
+        chargeId: payment?.chargeId,
+        amount: payment?.amount || totalOrder,
+        status: payment?.status || "Pending",
         paidAt: null,
-        method: "GCash",
+        method: payment?.method || "GCash",
       },
     });
 
