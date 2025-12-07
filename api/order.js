@@ -416,6 +416,30 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// ✅ Update payment status
+router.put("/:id/payment-status", async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["Pending", "Succeeded", "Failed"].includes(status)) {
+      return res.status(400).json({ error: "Invalid payment status" });
+    }
+
+    const order = await Orders.findByIdAndUpdate(
+      req.params.id,
+      { "payment.status": status },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    console.log("✅ Payment status updated:", order._id, "→", status);
+    res.json(order);
+  } catch (err) {
+    console.error("❌ Error updating payment status:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch("/:id/status", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
