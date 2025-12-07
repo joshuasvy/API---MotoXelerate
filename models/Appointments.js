@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const toProperCase = (str = "") =>
   str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -22,12 +21,10 @@ const appointmentSchema = new mongoose.Schema(
       default: "Pending",
     },
     read: { type: Boolean, default: false },
-
-    // ✅ Embedded payment tracking
     payment: {
       referenceId: { type: String, unique: true, index: true },
       chargeId: { type: String, default: null },
-      amount: { type: Number, required: true }, // downpayment amount
+      amount: { type: Number, required: true },
       status: {
         type: String,
         enum: ["Pending", "Succeeded", "Failed"],
@@ -40,7 +37,6 @@ const appointmentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Normalize before save
 appointmentSchema.pre("save", function (next) {
   if (this.isModified("status") && typeof this.status === "string") {
     this.status = toProperCase(this.status);
@@ -48,7 +44,6 @@ appointmentSchema.pre("save", function (next) {
   next();
 });
 
-// Normalize before update
 appointmentSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate() || {};
   const status = update.status ?? (update.$set && update.$set.status);

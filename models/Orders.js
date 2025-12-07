@@ -26,7 +26,7 @@ const orderSchema = new mongoose.Schema(
     totalOrder: { type: Number, required: true },
     paymentMethod: {
       type: String,
-      enum: ["GCash", "Cash on Delivery", "Pick up"], // ✅ fixed
+      enum: ["GCash", "Cash on Delivery", "Pick up"],
       default: "GCash",
     },
     orderRequest: {
@@ -38,8 +38,6 @@ const orderSchema = new mongoose.Schema(
     deliveryAddress: { type: String },
     notes: { type: String },
     read: { type: Boolean, default: false },
-
-    // ✅ Embedded payment tracking
     payment: {
       referenceId: { type: String, unique: true, index: true },
       chargeId: { type: String, default: null },
@@ -50,7 +48,7 @@ const orderSchema = new mongoose.Schema(
         default: "Pending",
       },
       paidAt: { type: Date, default: null },
-      method: { type: String, default: "GCash" }, // ✅ consistent
+      method: { type: String, default: "GCash" },
     },
   },
   { timestamps: true }

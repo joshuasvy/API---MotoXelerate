@@ -23,20 +23,15 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Socket.IO setup with explicit transports + CORS
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000", // dev
-      "https://api-motoxelerate.onrender.com", // prod
-    ],
+    origin: ["http://localhost:3000", "https://api-motoxelerate.onrender.com"],
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"], // allow fallback
+  transports: ["websocket", "polling"],
 });
 
-// ✅ Socket.IO connection handler
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
 
@@ -53,15 +48,12 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ Health check route (useful for Render)
 app.get("/health", (req, res) => res.send("OK"));
 app.get("/", (req, res) => res.send("Connected!"));
 
-// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -70,7 +62,6 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ API routes
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
@@ -85,17 +76,14 @@ app.use("/api/webhooks", xenditWebhooks);
 app.use("/api/redirect", redirectRoutes);
 app.use("/api/gcash/webhook", mockWebhook);
 
-// ✅ 404 handler
 app.use((req, res) => {
   console.warn("❌ 404 hit:", req.method, req.originalUrl);
   res.status(404).json({ message: "Route Not Found" });
 });
 
-// ✅ Server start
 const PORT = process.env.PORT || 2004;
 server.listen(PORT, () => {
   console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
 });
 
-// ✅ Export for use in routes
 export { app, io };
