@@ -1,13 +1,13 @@
 import express from "express";
 import Invoice from "../models/Invoice.js";
-import Order from "../models/Order.js";
+import Orders from "../models/Orders.js";
 
 const router = express.Router();
 
 // ✅ Generate invoice from an existing order
 router.post("/from-order/:orderId", async (req, res) => {
   try {
-    const order = await Order.findById(req.params.orderId).populate(
+    const order = await Orders.findById(req.params.orderId).populate(
       "items.product"
     );
     if (!order) return res.status(404).json({ error: "Order not found" });
