@@ -79,6 +79,8 @@ router.post("/", async (req, res) => {
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
+      customerEmail: user.email,
+      customerPhone: user.contact,
       items: orderItems,
       totalOrder,
       paymentMethod: normalizedPaymentMethod,
@@ -447,7 +449,6 @@ router.put("/:id/payment-status", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 router.patch("/:id/status", async (req, res) => {
   try {

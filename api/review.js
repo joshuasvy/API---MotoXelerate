@@ -87,19 +87,6 @@ router.get("/", async (req, res) => {
       console.warn("⚠️ No reviews found in database.");
       return res.status(200).json([]);
     }
-
-    reviews.forEach((r, i) => {
-      console.log(`🔍 Review ${i + 1}:`, {
-        reviewId: r._id,
-        userId: r.userId?._id,
-        firstName: r.userId?.firstName,
-        lastName: r.userId?.lastName,
-        image: r.userId?.image,
-        rate: r.rate,
-        review: r.review,
-      });
-    });
-
     console.log(`✅ Found ${reviews.length} total reviews`);
     res.json(reviews);
   } catch (err) {

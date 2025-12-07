@@ -60,7 +60,7 @@ router.post("/from-order/:orderId", async (req, res) => {
       })),
       subtotal: order.totalOrder,
       total: order.totalOrder,
-      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid", // ✅ lowercase to match schema
+      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid",
     });
 
     console.log("💾 Saving invoice...");

@@ -22,6 +22,8 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
     customerName: { type: String, required: true },
+    customerEmail: { type: String, required: true },
+    customerPhone: { type: String, required: true },
     items: [orderItemSchema],
     totalOrder: { type: Number, required: true },
     paymentMethod: {
