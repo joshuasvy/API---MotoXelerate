@@ -1,7 +1,7 @@
 import express from "express";
-import Invoice from "../models/Invoice";
-import Orders from "../models/Order";
-import User from "../models/User";
+import Invoice from "../models/Invoice.js";
+import Orders from "../models/Orders.js";
+import User from "../models/Users.js";
 
 const router = express.Router();
 
