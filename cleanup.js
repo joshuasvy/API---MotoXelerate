@@ -1,45 +1,43 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import Invoice from "./models/Invoice.js";
+import Order from "./models/Orders.js";
 import User from "./models/Users.js";
 
 dotenv.config();
 
-async function backfillInvoiceContacts() {
+async function backfillOrders() {
   await mongoose.connect(process.env.MONGO_URI);
 
-  const invoices = await Invoice.find({
+  console.log("🔍 Fetching orders without email/phone...");
+  const orders = await Order.find({
     $or: [
       { customerEmail: { $exists: false } },
       { customerPhone: { $exists: false } },
     ],
   });
 
-  console.log(`Found ${invoices.length} invoices missing contact info`);
+  console.log(`Found ${orders.length} orders to update`);
 
-  for (const inv of invoices) {
+  for (const order of orders) {
     try {
-      // Assuming sourceId points to the order, and order has userId
-      // If you store userId directly in invoice, adjust accordingly
-      const user = await User.findById(inv.sourceId); // or order.userId if sourceId is an order
+      const user = await User.findById(order.userId);
       if (!user) {
-        console.warn(`⚠️ No user found for invoice ${inv._id}`);
+        console.warn(`⚠️ No user found for order ${order._id}`);
         continue;
       }
 
-      inv.customerEmail = user.email;
-      inv.customerPhone = user.contact;
+      order.customerEmail = user.email;
+      order.customerPhone = user.contact;
 
-      await inv.save();
-      console.log(
-        `✅ Updated invoice ${inv.invoiceNumber} with ${user.email}, ${user.contact}`
-      );
+      await order.save();
+      console.log(`✅ Updated order ${order._id} with email/phone`);
     } catch (err) {
-      console.error(`❌ Failed to update invoice ${inv._id}`, err);
+      console.error(`❌ Failed to update order ${order._id}:`, err.message);
     }
   }
 
   await mongoose.disconnect();
+  console.log("🎉 Backfill complete!");
 }
 
-backfillInvoiceContacts();
+backfillOrders();

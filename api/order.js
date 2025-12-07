@@ -288,15 +288,17 @@ router.get("/:id", async (req, res) => {
     }
 
     const formatted = {
-      id: order._id.toString(), // ✅ send as "id"
-      name: order.customerName, // ✅ rename for frontend
+      id: order._id.toString(),
+      name: order.customerName,
+      email: order.customerEmail ?? "N/A",
+      contact: order.customerPhone ?? "N/A",
       dateRaw: order.orderDate || order.createdAt,
       date: new Date(order.orderDate || order.createdAt).toLocaleDateString(),
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       total: `₱${order.totalOrder.toLocaleString()}`,
       paymentStatus: order.payment?.status ?? "N/A",
       paymentMethod: order.paymentMethod ?? "N/A",
-      status: order.orderRequest ?? "N/A", // ✅ include orderRequest
+      status: order.orderRequest ?? "N/A",
       address: order.deliveryAddress || "No address provided",
       items: order.items.map((item, index) => {
         const product = item.product;
