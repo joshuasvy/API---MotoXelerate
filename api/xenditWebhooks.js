@@ -3,6 +3,7 @@ import Order from "../models/Orders.js";
 import Product from "../models/Product.js";
 import Appointments from "../models/Appointments.js";
 import Invoice from "../models/Invoice.js"; // ✅ import Invoice model
+import { broadcastEntity } from "../utils/broadcast.js";
 
 const router = express.Router();
 
@@ -103,6 +104,7 @@ router.post("/", async (req, res) => {
           "payment.amount": amount,
           "payment.paidAt":
             normalizedStatus === "Succeeded" ? new Date() : null,
+          status: appointmentStatus, // ✅ keep lifecycle in sync
         },
       },
       { new: true }
@@ -139,8 +141,8 @@ router.post("/", async (req, res) => {
     );
 
     if (updatedInvoice) {
-      broadcastEntity("invoice", updatedInvoice.toObject(), "update"); // ✅ emit invoice:update
-      console.log("📡 Broadcasting invoice:update", {
+      broadcastEntity("invoice", updatedInvoice.toObject(), "update");
+      console.log("📡 Broadcasted invoice:update", {
         invoiceId: updatedInvoice._id,
         sourceId: updatedInvoice.sourceId,
         appointmentStatus: updatedInvoice.appointmentStatus,
