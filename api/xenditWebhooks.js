@@ -130,7 +130,12 @@ router.post("/", async (req, res) => {
         paymentStatus: normalizedStatus,
         status: normalizedStatus === "Succeeded" ? "Paid" : "Unpaid",
         paidAt: normalizedStatus === "Succeeded" ? new Date() : null,
-      }
+        appointmentStatus: updated.status,
+        mechanic: updated.mechanic,
+        date: updated.date,
+        time: updated.time,
+      },
+      { new: true }
     );
 
     return res.status(200).send("Webhook received (Appointment)");
