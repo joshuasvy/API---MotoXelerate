@@ -88,7 +88,6 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    // ✅ If invoice already exists, return it (and patch missing customer info)
     let existingInvoice = await Invoice.findOne({
       sourceId: appointment._id,
       referenceId: appointment.payment?.referenceId,
@@ -111,7 +110,6 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
     const paymentStatus =
       rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
-    // ✅ Create new invoice using appointment fields directly
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "Appointment",
@@ -134,8 +132,6 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       subtotal: appointment.service_Charge,
       total: appointment.service_Charge,
       status: paymentStatus === "Succeeded" ? "Paid" : "Unpaid",
-
-      // Appointment summary
       appointmentId: appointment._id,
       serviceType: appointment.service_Type,
       mechanic: appointment.mechanic,
@@ -149,12 +145,6 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
     const savedInvoice = await invoice.save();
     appointment.invoiceId = savedInvoice._id;
     await appointment.save();
-
-    console.info("✅ Created invoice:", savedInvoice.invoiceNumber, {
-      email: savedInvoice.customerEmail,
-      phone: savedInvoice.customerPhone,
-    });
-
     res.status(201).json(savedInvoice);
   } catch (err) {
     console.error("❌ Error creating invoice:", err);

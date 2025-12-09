@@ -8,6 +8,8 @@ import Users from "../models/Users.js";
 const router = express.Router();
 
 router.post("/", authToken, async (req, res) => {
+  console.log("📥 Incoming appointment payload:", req.body);
+
   try {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
@@ -59,8 +61,9 @@ router.post("/", authToken, async (req, res) => {
     });
 
     await newAppointment.save();
-    broadcastEntity("appointment", newAppointment, "update");
     console.log("📦 Saved appointment:", newAppointment);
+    broadcastEntity("appointment", newAppointment, "update");
+    console.log("📡 Broadcasting appointment:", newAppointment.status);
 
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${Date.now()}`;
