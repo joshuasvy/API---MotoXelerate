@@ -124,7 +124,7 @@ router.post("/", async (req, res) => {
     });
 
     // ✅ Update linked invoice
-    await Invoice.findOneAndUpdate(
+    const updatedInvoice = await Invoice.findOneAndUpdate(
       { sourceId: updated._id, sourceType: "Appointment" },
       {
         paymentStatus: normalizedStatus,
@@ -137,6 +137,18 @@ router.post("/", async (req, res) => {
       },
       { new: true }
     );
+
+    if (updatedInvoice) {
+      broadcastEntity("invoice", updatedInvoice.toObject(), "update"); // ✅ emit invoice:update
+      console.log("📡 Broadcasting invoice:update", {
+        invoiceId: updatedInvoice._id,
+        sourceId: updatedInvoice.sourceId,
+        appointmentStatus: updatedInvoice.appointmentStatus,
+        mechanic: updatedInvoice.mechanic,
+        date: updatedInvoice.date,
+        time: updatedInvoice.time,
+      });
+    }
 
     return res.status(200).send("Webhook received (Appointment)");
   } catch (err) {
