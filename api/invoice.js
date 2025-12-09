@@ -103,7 +103,9 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       return res.status(200).json(existingInvoice);
     }
 
-    const paymentStatus = appointment.payment?.status || "Pending";
+    const rawStatus = appointment.payment?.status || "Pending";
+    const paymentStatus =
+      rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
@@ -113,7 +115,7 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       customerEmail: user.email,
       customerPhone: user.contact,
       paymentMethod: appointment.payment?.method,
-      paymentStatus,
+      paymentStatus, // ✅ synced with appointment
       referenceId: appointment.payment?.referenceId,
       paidAt: appointment.payment?.paidAt,
       items: [
@@ -126,7 +128,7 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       ],
       subtotal: appointment.service_Charge,
       total: appointment.service_Charge,
-      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid",
+      status: paymentStatus === "Succeeded" ? "Paid" : "Unpaid", // ✅ consistent
     });
 
     const savedInvoice = await invoice.save();
