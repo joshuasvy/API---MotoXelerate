@@ -43,7 +43,7 @@ router.post("/from-order/:orderId", async (req, res) => {
 
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
-      sourceType: "order",
+      sourceType: "Order",
       sourceId: order._id,
       customerName: order.customerName,
       customerAddress: order.deliveryAddress,
