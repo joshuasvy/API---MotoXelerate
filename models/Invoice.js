@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from "./Users.js"; // adjust path to your Users model
 
 const invoiceItemSchema = new mongoose.Schema(
   {
@@ -10,7 +11,6 @@ const invoiceItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Keep lineTotal consistent
 invoiceItemSchema.pre("validate", function (next) {
   if (typeof this.quantity === "number" && typeof this.unitPrice === "number") {
     this.lineTotal = this.quantity * this.unitPrice;
@@ -21,11 +21,9 @@ invoiceItemSchema.pre("validate", function (next) {
 const invoiceSchema = new mongoose.Schema(
   {
     invoiceNumber: { type: String, unique: true, required: true },
-
-    // Use capitalized values to match model names for refPath
     sourceType: {
       type: String,
-      enum: ["Order", "Appointment"], // must match mongoose.model names
+      enum: ["Order", "Appointment"],
       required: true,
     },
     sourceId: {
@@ -62,7 +60,7 @@ const invoiceSchema = new mongoose.Schema(
       default: "Unpaid",
     },
 
-    // Appointment-specific fields (optional; safe for Order invoices)
+    // Appointment-specific fields
     appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment" },
     serviceType: { type: String },
     mechanic: { type: String },
@@ -76,17 +74,30 @@ const invoiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Keep subtotal/total consistent with items
-invoiceSchema.pre("validate", function (next) {
-  if (Array.isArray(this.items)) {
-    const subtotal = this.items.reduce(
-      (sum, item) => sum + (item.lineTotal || 0),
-      0
-    );
-    this.subtotal = subtotal;
-    this.total = subtotal;
+// ✅ Pre-save hook to auto-fill customerEmail and customerPhone
+invoiceSchema.pre("save", async function (next) {
+  try {
+    if (
+      this.sourceType === "Appointment" &&
+      this.sourceId &&
+      (!this.customerEmail || !this.customerPhone)
+    ) {
+      const appointment = await mongoose
+        .model("Appointment")
+        .findById(this.sourceId);
+      if (appointment) {
+        const user = await User.findById(appointment.userId);
+        if (user) {
+          this.customerEmail = user.email;
+          this.customerPhone = user.contact;
+        }
+      }
+    }
+    next();
+  } catch (err) {
+    console.error("❌ Error in Invoice pre-save hook:", err);
+    next(err);
   }
-  next();
 });
 
 export default mongoose.model("Invoice", invoiceSchema);

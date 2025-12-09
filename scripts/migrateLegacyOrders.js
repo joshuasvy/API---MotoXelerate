@@ -1,44 +1,51 @@
 import mongoose from "mongoose";
-import Orders from "../models/Orders.js"; // adjust path if needed
-import dotenv from "dotenv";
+import Appointment from "../models/Appointments.js";
+import User from "../models/Users.js";
+import Invoice from "../models/Invoice.js";
 
-dotenv.config(); // if you're using .env for DB connection
+const MONGO_URI =
+  "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate"; // adjust to your DB
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+async function migrateAppointmentInvoices() {
+  await mongoose.connect(MONGO_URI);
 
-async function migrateLegacyOrders() {
-  const orders = await Orders.find();
+  console.log("🔄 Starting migration of appointment invoices...");
 
-  for (const order of orders) {
-    let updated = false;
+  // Find invoices linked to appointments
+  const invoices = await Invoice.find({ sourceType: "Appointment" });
 
-    for (const item of order.items) {
-      if (typeof item.product === "string") {
-        item.product = mongoose.Types.ObjectId(item.product);
-        updated = true;
+  for (const invoice of invoices) {
+    try {
+      const appointment = await Appointment.findById(invoice.sourceId);
+      if (!appointment) {
+        console.warn(`⚠️ Appointment not found for invoice ${invoice._id}`);
+        continue;
       }
 
-      delete item.productName;
-      delete item.price;
-      delete item.image;
-      delete item.specification;
-      delete item.category;
-    }
+      const user = await User.findById(appointment.userId);
 
-    if (updated) {
-      await order.save();
-      console.log("✅ Migrated order:", order._id);
+      // Backfill fields
+      invoice.appointmentId = appointment._id;
+      invoice.serviceType = appointment.service_Type;
+      invoice.mechanic = appointment.mechanic;
+      invoice.date = appointment.date;
+      invoice.time = appointment.time;
+      invoice.appointmentStatus = appointment.status;
+
+      if (user) {
+        invoice.customerEmail = user.email;
+        invoice.customerPhone = user.contact;
+      }
+
+      await invoice.save();
+      console.log(`✅ Updated invoice ${invoice.invoiceNumber}`);
+    } catch (err) {
+      console.error(`❌ Error updating invoice ${invoice._id}:`, err.message);
     }
   }
 
-  console.log("🎉 Legacy migration complete.");
-  mongoose.disconnect();
+  console.log("🎉 Migration complete.");
+  await mongoose.disconnect();
 }
 
-migrateLegacyOrders().catch((err) => {
-  console.error("❌ Migration error:", err);
-  mongoose.disconnect();
-});
+migrateAppointmentInvoices();
