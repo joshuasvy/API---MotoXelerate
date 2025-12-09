@@ -115,7 +115,7 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       customerEmail: user.email,
       customerPhone: user.contact,
       paymentMethod: appointment.payment?.method,
-      paymentStatus, // ✅ synced with appointment
+      paymentStatus,
       referenceId: appointment.payment?.referenceId,
       paidAt: appointment.payment?.paidAt,
       items: [
@@ -128,7 +128,15 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       ],
       subtotal: appointment.service_Charge,
       total: appointment.service_Charge,
-      status: paymentStatus === "Succeeded" ? "Paid" : "Unpaid", // ✅ consistent
+      status: paymentStatus === "Succeeded" ? "Paid" : "Unpaid",
+      appointmentId: appointment._id,
+      serviceType: appointment.service_Type,
+      mechanic: appointment.mechanic,
+      date: appointment.date,
+      time: appointment.time,
+      appointmentStatus: appointment.status,
+      createdAt: appointment.createdAt,
+      updatedAt: appointment.updatedAt,
     });
 
     const savedInvoice = await invoice.save();

@@ -83,7 +83,7 @@ router.post("/", authToken, async (req, res) => {
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
-      invoice: newInvoice, // ✅ return invoice alongside appointment
+      invoice: newInvoice, 
     });
   } catch (err) {
     console.error("❌ Booking error:", err.message);

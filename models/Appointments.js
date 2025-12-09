@@ -10,6 +10,8 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
     },
     customer_Name: { type: String, required: true },
+    // customerEmail: { type: String },
+    // customerPhone: { type: String },
     service_Type: { type: String, required: true },
     mechanic: { type: String, default: "" },
     date: { type: Date, required: true },
