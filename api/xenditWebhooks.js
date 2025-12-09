@@ -38,7 +38,6 @@ router.post("/", async (req, res) => {
 
   // Map payment status to appointment lifecycle
   const appointmentStatusMap = {
-    Succeeded: "Confirmed",
     Failed: "Cancelled",
     Expired: "Cancelled",
   };
@@ -104,7 +103,6 @@ router.post("/", async (req, res) => {
           "payment.amount": amount,
           "payment.paidAt":
             normalizedStatus === "Succeeded" ? new Date() : null,
-          status: appointmentStatus,
         },
       },
       { new: true }
