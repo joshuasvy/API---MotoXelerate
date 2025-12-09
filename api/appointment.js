@@ -39,8 +39,8 @@ router.post("/", authToken, async (req, res) => {
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
-      customerEmail: user.email, // ✅ embed email
-      customerPhone: user.contact, // ✅ embed contact
+      customerEmail: user.email,
+      customerPhone: user.contact,
       service_Type,
       mechanic: "",
       date: parsedDate,
