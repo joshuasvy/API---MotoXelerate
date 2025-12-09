@@ -74,11 +74,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✅ Fetch all reviews (for dashboard)
 router.get("/", async (req, res) => {
   try {
-    console.log("🔍 Fetching all reviews for dashboard...");
-
     const reviews = await Reviews.find()
       .sort({ createdAt: -1 })
       .populate("userId", "firstName lastName image");
@@ -87,7 +84,6 @@ router.get("/", async (req, res) => {
       console.warn("⚠️ No reviews found in database.");
       return res.status(200).json([]);
     }
-    console.log(`✅ Found ${reviews.length} total reviews`);
     res.json(reviews);
   } catch (err) {
     console.error("❌ Failed to fetch all reviews:", {
