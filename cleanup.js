@@ -1,43 +1,42 @@
-import dotenv from "dotenv";
 import mongoose from "mongoose";
-import Order from "./models/Orders.js";
+import Appointment from "./models/Appointments.js";
 import User from "./models/Users.js";
 
-dotenv.config();
+const MONGO_URI =
+  "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate"; // adjust to your DB
 
-async function backfillOrders() {
-  await mongoose.connect(process.env.MONGO_URI);
+async function backfillAppointments() {
+  await mongoose.connect(MONGO_URI);
 
-  console.log("🔍 Fetching orders without email/phone...");
-  const orders = await Order.find({
+  console.log("🔄 Backfilling appointments with customer email and phone...");
+
+  const appointments = await Appointment.find({
     $or: [
       { customerEmail: { $exists: false } },
       { customerPhone: { $exists: false } },
     ],
   });
 
-  console.log(`Found ${orders.length} orders to update`);
-
-  for (const order of orders) {
+  for (const appt of appointments) {
     try {
-      const user = await User.findById(order.userId);
+      const user = await User.findById(appt.userId);
       if (!user) {
-        console.warn(`⚠️ No user found for order ${order._id}`);
+        console.warn(`⚠️ User not found for appointment ${appt._id}`);
         continue;
       }
 
-      order.customerEmail = user.email;
-      order.customerPhone = user.contact;
+      appt.customerEmail = user.email;
+      appt.customerPhone = user.contact;
 
-      await order.save();
-      console.log(`✅ Updated order ${order._id} with email/phone`);
+      await appt.save();
+      console.log(`✅ Updated appointment ${appt._id} with email/contact`);
     } catch (err) {
-      console.error(`❌ Failed to update order ${order._id}:`, err.message);
+      console.error(`❌ Error updating appointment ${appt._id}:`, err.message);
     }
   }
 
+  console.log("🎉 Appointment backfill complete.");
   await mongoose.disconnect();
-  console.log("🎉 Backfill complete!");
 }
 
-backfillOrders();
+backfillAppointments();

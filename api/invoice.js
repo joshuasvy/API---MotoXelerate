@@ -88,18 +88,22 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    const user = await User.findById(appointment.userId);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ error: "User not found for this appointment" });
-    }
-
-    const existingInvoice = await Invoice.findOne({
+    // ✅ If invoice already exists, return it (and patch missing customer info)
+    let existingInvoice = await Invoice.findOne({
       sourceId: appointment._id,
       referenceId: appointment.payment?.referenceId,
     });
+
     if (existingInvoice) {
+      if (!existingInvoice.customerEmail || !existingInvoice.customerPhone) {
+        existingInvoice.customerEmail = appointment.customerEmail;
+        existingInvoice.customerPhone = appointment.customerPhone;
+        await existingInvoice.save();
+        console.info(
+          "🔄 Backfilled customer info for invoice:",
+          existingInvoice.invoiceNumber
+        );
+      }
       return res.status(200).json(existingInvoice);
     }
 
@@ -107,13 +111,14 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
     const paymentStatus =
       rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
+    // ✅ Create new invoice using appointment fields directly
     const invoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "Appointment",
       sourceId: appointment._id,
       customerName: appointment.customer_Name,
-      customerEmail: user.email,
-      customerPhone: user.contact,
+      customerEmail: appointment.customerEmail,
+      customerPhone: appointment.customerPhone,
       paymentMethod: appointment.payment?.method,
       paymentStatus,
       referenceId: appointment.payment?.referenceId,
@@ -129,6 +134,8 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       subtotal: appointment.service_Charge,
       total: appointment.service_Charge,
       status: paymentStatus === "Succeeded" ? "Paid" : "Unpaid",
+
+      // Appointment summary
       appointmentId: appointment._id,
       serviceType: appointment.service_Type,
       mechanic: appointment.mechanic,
@@ -143,8 +150,14 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
     appointment.invoiceId = savedInvoice._id;
     await appointment.save();
 
+    console.info("✅ Created invoice:", savedInvoice.invoiceNumber, {
+      email: savedInvoice.customerEmail,
+      phone: savedInvoice.customerPhone,
+    });
+
     res.status(201).json(savedInvoice);
   } catch (err) {
+    console.error("❌ Error creating invoice:", err);
     res.status(500).json({ error: err.message });
   }
 });

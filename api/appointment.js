@@ -12,27 +12,35 @@ router.post("/", authToken, async (req, res) => {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
 
+    // ✅ Validate required fields
     if (!date || !time || !service_Type || !service_Charge) {
+      console.warn("⚠️ Missing required fields in invoice request:", req.body);
       return res.status(400).json({ message: "Missing required fields." });
     }
 
+    // ✅ Fetch user
     const user = await Users.findById(userId);
     if (!user) {
+      console.error("❌ User not found for ID:", userId);
       return res.status(404).json({ message: "User not found." });
     }
 
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const downpaymentAmount = Math.round(Number(service_Charge) * 0.5);
 
+    // ✅ Parse date safely
     const parsedDate = new Date(date);
-    if (isNaN(parsedDate)) {
+    if (isNaN(parsedDate.getTime())) {
+      console.warn("⚠️ Invalid date format received:", date);
       return res.status(400).json({ message: "Invalid date format." });
     }
 
-    // ✅ Create Appointment
+    // ✅ Create Appointment with embedded customer info
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
+      customerEmail: user.email, // ✅ embed email
+      customerPhone: user.contact, // ✅ embed contact
       service_Type,
       mechanic: "",
       date: parsedDate,
@@ -54,14 +62,14 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", newAppointment, "update");
 
     // ✅ Create Invoice linked to Appointment
-    const invoiceNumber = `INV-${Date.now()}`; // or use a sequence generator
+    const invoiceNumber = `INV-${Date.now()}`;
     const newInvoice = new Invoice({
       invoiceNumber,
-      sourceType: "Appointment", // must match your model name
+      sourceType: "Appointment",
       sourceId: newAppointment._id,
       customerName: fullName,
       customerEmail: user.email,
-      customerPhone: user.phone,
+      customerPhone: user.contact,
       paymentMethod: "GCash",
       paymentStatus: "Pending",
       referenceId: newAppointment.payment.referenceId,
@@ -76,17 +84,31 @@ router.post("/", authToken, async (req, res) => {
       subtotal: Number(service_Charge),
       total: Number(service_Charge),
       status: "Unpaid",
+
+      // ✅ Appointment summary fields
+      appointmentId: newAppointment._id,
+      serviceType: service_Type,
+      mechanic: "",
+      date: parsedDate,
+      time,
+      appointmentStatus: "Pending",
     });
 
     await newInvoice.save();
 
+    console.info("✅ Appointment and Invoice created:", {
+      invoiceNumber,
+      customerEmail: newInvoice.customerEmail,
+      customerPhone: newInvoice.customerPhone,
+    });
+
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
-      invoice: newInvoice, 
+      invoice: newInvoice,
     });
   } catch (err) {
-    console.error("❌ Booking error:", err.message);
+    console.error("❌ Booking error:", err);
     return res.status(500).json({ error: err.message });
   }
 });
