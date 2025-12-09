@@ -60,6 +60,7 @@ router.post("/", authToken, async (req, res) => {
 
     await newAppointment.save();
     broadcastEntity("appointment", newAppointment, "update");
+    console.log("📦 Saved appointment:", newAppointment);
 
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${Date.now()}`;
@@ -95,13 +96,6 @@ router.post("/", authToken, async (req, res) => {
     });
 
     await newInvoice.save();
-
-    console.info("✅ Appointment and Invoice created:", {
-      invoiceNumber,
-      customerEmail: newInvoice.customerEmail,
-      customerPhone: newInvoice.customerPhone,
-    });
-
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
