@@ -1,6 +1,7 @@
 import { authToken } from "../middleware/authToken.js";
 import { broadcastEntity } from "../utils/socketBroadcast.js";
 import express from "express";
+import Invoice from "../models/Invoice.js";
 import Appointments from "../models/Appointments.js";
 import Users from "../models/Users.js";
 
@@ -12,18 +13,11 @@ router.post("/", authToken, async (req, res) => {
     const userId = req.user.id;
 
     if (!date || !time || !service_Type || !service_Charge) {
-      console.warn("⚠️ Missing required fields:", {
-        date,
-        time,
-        service_Type,
-        service_Charge,
-      });
       return res.status(400).json({ message: "Missing required fields." });
     }
 
     const user = await Users.findById(userId);
     if (!user) {
-      console.warn("⚠️ User not found:", userId);
       return res.status(404).json({ message: "User not found." });
     }
 
@@ -32,10 +26,10 @@ router.post("/", authToken, async (req, res) => {
 
     const parsedDate = new Date(date);
     if (isNaN(parsedDate)) {
-      console.warn("⚠️ Invalid date format:", date);
       return res.status(400).json({ message: "Invalid date format." });
     }
 
+    // ✅ Create Appointment
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
@@ -59,9 +53,37 @@ router.post("/", authToken, async (req, res) => {
     await newAppointment.save();
     broadcastEntity("appointment", newAppointment, "update");
 
+    // ✅ Create Invoice linked to Appointment
+    const invoiceNumber = `INV-${Date.now()}`; // or use a sequence generator
+    const newInvoice = new Invoice({
+      invoiceNumber,
+      sourceType: "Appointment", // must match your model name
+      sourceId: newAppointment._id,
+      customerName: fullName,
+      customerEmail: user.email,
+      customerPhone: user.phone,
+      paymentMethod: "GCash",
+      paymentStatus: "Pending",
+      referenceId: newAppointment.payment.referenceId,
+      items: [
+        {
+          description: service_Type,
+          quantity: 1,
+          unitPrice: Number(service_Charge),
+          lineTotal: Number(service_Charge),
+        },
+      ],
+      subtotal: Number(service_Charge),
+      total: Number(service_Charge),
+      status: "Unpaid",
+    });
+
+    await newInvoice.save();
+
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
+      invoice: newInvoice, // ✅ return invoice alongside appointment
     });
   } catch (err) {
     console.error("❌ Booking error:", err.message);

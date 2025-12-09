@@ -12,7 +12,7 @@ const invoiceSchema = new mongoose.Schema(
     invoiceNumber: { type: String, unique: true, required: true },
     sourceType: {
       type: String,
-      enum: ["order", "appointment"],
+      enum: ["Order", "Appointment"],
       required: true,
     },
     sourceId: {

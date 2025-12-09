@@ -1,6 +1,7 @@
 import express from "express";
 import Invoice from "../models/Invoice.js";
 import Orders from "../models/Orders.js";
+import Appointments from "../models/Appointments.js";
 import User from "../models/Users.js";
 
 const router = express.Router();
@@ -77,9 +78,72 @@ router.post("/from-order/:orderId", async (req, res) => {
   }
 });
 
+// -------------------- APPOINTMENT INVOICE --------------------
+router.post("/from-appointment/:appointmentId", async (req, res) => {
+  try {
+    console.log("🔍 Looking up appointment:", req.params.appointmentId);
+    const appointment = await Appointments.findById(req.params.appointmentId);
+
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    const user = await User.findById(appointment.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ error: "User not found for this appointment" });
+    }
+
+    const existingInvoice = await Invoice.findOne({
+      sourceId: appointment._id,
+      referenceId: appointment.payment?.referenceId,
+    });
+    if (existingInvoice) {
+      return res.status(200).json(existingInvoice);
+    }
+
+    const paymentStatus = appointment.payment?.status || "Pending";
+
+    const invoice = new Invoice({
+      invoiceNumber: `INV-${Date.now()}`,
+      sourceType: "Appointment",
+      sourceId: appointment._id,
+      customerName: appointment.customer_Name,
+      customerEmail: user.email,
+      customerPhone: user.contact,
+      paymentMethod: appointment.payment?.method,
+      paymentStatus,
+      referenceId: appointment.payment?.referenceId,
+      paidAt: appointment.payment?.paidAt,
+      items: [
+        {
+          description: appointment.service_Type,
+          quantity: 1,
+          unitPrice: appointment.service_Charge,
+          lineTotal: appointment.service_Charge,
+        },
+      ],
+      subtotal: appointment.service_Charge,
+      total: appointment.service_Charge,
+      status: paymentStatus?.toUpperCase() === "SUCCEEDED" ? "Paid" : "Unpaid",
+    });
+
+    const savedInvoice = await invoice.save();
+    appointment.invoiceId = savedInvoice._id;
+    await appointment.save();
+
+    res.status(201).json(savedInvoice);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    const invoices = await Invoice.find()
+      .sort({ createdAt: -1 })
+      .populate("sourceId");
     res.json(invoices);
   } catch (err) {
     console.error("❌ Error fetching invoices:", err.message, err.stack);
@@ -89,12 +153,13 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const invoice = await Invoice.findById(req.params.id).populate("sourceId");
 
     if (!invoice) {
       console.warn("⚠️ Invoice not found:", req.params.id);
       return res.status(404).json({ error: "Invoice not found" });
     }
+
     res.json(invoice);
   } catch (err) {
     console.error("❌ Error fetching invoice:", err.message, err.stack);
