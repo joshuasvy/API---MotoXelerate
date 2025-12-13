@@ -136,7 +136,6 @@ router.get("/", authToken, async (req, res) => {
       }
     }
 
-    // ✅ Admins can fetch all appointments
     const appointments =
       req.user.role === "admin"
         ? await Appointments.find().sort({ createdAt: -1 }).lean()
@@ -205,6 +204,28 @@ router.get("/:id", authToken, async (req, res) => {
     return res.status(200).json(appointment);
   } catch (err) {
     console.error("❌ Fetch single appointment error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id", authToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updated = await Appointments.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Appointment updated", appointment: updated });
+  } catch (err) {
+    console.error("❌ Update error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
