@@ -20,6 +20,7 @@ invoiceItemSchema.pre("validate", function (next) {
 
 const invoiceSchema = new mongoose.Schema(
   {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     invoiceNumber: { type: String, unique: true, required: true },
     sourceType: {
       type: String,

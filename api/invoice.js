@@ -165,22 +165,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id).populate("sourceId");
-
-    if (!invoice) {
-      console.warn("⚠️ Invoice not found:", req.params.id);
-      return res.status(404).json({ error: "Invoice not found" });
-    }
-
-    res.json(invoice);
-  } catch (err) {
-    console.error("❌ Error fetching invoice:", err.message, err.stack);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // User invoices
 router.get("/me", authToken, async (req, res) => {
   try {
@@ -193,6 +177,22 @@ router.get("/me", authToken, async (req, res) => {
     res.json(invoices);
   } catch (err) {
     console.error("❌ Error fetching user invoices:", err.message, err.stack);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/:id", async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id).populate("sourceId");
+
+    if (!invoice) {
+      console.warn("⚠️ Invoice not found:", req.params.id);
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    res.json(invoice);
+  } catch (err) {
+    console.error("❌ Error fetching invoice:", err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
