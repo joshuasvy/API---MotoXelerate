@@ -1,8 +1,9 @@
 import express from "express";
+import mongoose from "mongoose";
 import Order from "../models/Orders.js";
 import Product from "../models/Product.js";
 import Appointments from "../models/Appointments.js";
-import Invoice from "../models/Invoice.js"; // ✅ import Invoice model
+import Invoice from "../models/Invoice.js";
 import { broadcastEntity } from "../utils/broadcast.js";
 
 const router = express.Router();
@@ -26,25 +27,26 @@ router.post("/", async (req, res) => {
     return res.status(400).send("Missing or invalid status");
   }
 
-  const capitalize = (s) =>
-    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  const normalizedStatus = capitalize(rawStatus);
+  // ✅ Normalize to uppercase
+  const normalizedStatus = rawStatus.toUpperCase();
 
-  // Map payment status to orderRequest lifecycle
+  // ✅ Map payment status to lifecycles
   const orderStatusMap = {
-    Succeeded: "To ship",
-    Failed: "Payment Failed",
-    Expired: "Payment Expired",
+    SUCCEEDED: "To ship",
+    FAILED: "Payment Failed",
+    EXPIRED: "Payment Expired",
   };
 
-  // Map payment status to appointment lifecycle
   const appointmentStatusMap = {
-    Failed: "Cancelled",
-    Expired: "Cancelled",
+    FAILED: "Cancelled",
+    EXPIRED: "Cancelled",
   };
 
   const orderRequestStatus = orderStatusMap[normalizedStatus] || "For Approval";
   const appointmentStatus = appointmentStatusMap[normalizedStatus] || "Pending";
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
     // -------------------- ORDER --------------------
@@ -55,11 +57,11 @@ router.post("/", async (req, res) => {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
           "payment.paidAt":
-            normalizedStatus === "Succeeded" ? new Date() : null,
+            normalizedStatus === "SUCCEEDED" ? new Date() : null,
           orderRequest: orderRequestStatus,
         },
       },
-      { new: true }
+      { new: true, session }
     );
 
     if (updated) {
@@ -72,26 +74,40 @@ router.post("/", async (req, res) => {
 
       // Roll back stock if payment failed/expired
       if (
-        ["Failed", "Expired"].includes(normalizedStatus) &&
+        ["FAILED", "EXPIRED"].includes(normalizedStatus) &&
         Array.isArray(updated.items)
       ) {
         for (const item of updated.items) {
-          await Product.findByIdAndUpdate(item.product, {
-            $inc: { stock: item.quantity },
-          });
+          await Product.findByIdAndUpdate(
+            item.product,
+            { $inc: { stock: item.quantity } },
+            { session }
+          );
         }
       }
 
-      // ✅ Update linked invoice
-      await Invoice.findOneAndUpdate(
+      // ✅ Update linked invoice + broadcast
+      const updatedOrderInvoice = await Invoice.findOneAndUpdate(
         { sourceId: updated._id, sourceType: "Order" },
         {
           paymentStatus: normalizedStatus,
-          status: normalizedStatus === "Succeeded" ? "Paid" : "Unpaid",
-          paidAt: normalizedStatus === "Succeeded" ? new Date() : null,
-        }
+          status: normalizedStatus === "SUCCEEDED" ? "Paid" : "Unpaid",
+          paidAt: normalizedStatus === "SUCCEEDED" ? new Date() : null,
+        },
+        { new: true, session }
       );
 
+      if (updatedOrderInvoice) {
+        broadcastEntity("invoice", updatedOrderInvoice.toObject(), "update");
+        console.log("📡 Broadcasted invoice:update", {
+          invoiceId: updatedOrderInvoice._id,
+          sourceId: updatedOrderInvoice.sourceId,
+          paymentStatus: updatedOrderInvoice.paymentStatus,
+        });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
       return res.status(200).send("Webhook received (Order)");
     }
 
@@ -103,11 +119,11 @@ router.post("/", async (req, res) => {
           "payment.status": normalizedStatus,
           "payment.amount": amount,
           "payment.paidAt":
-            normalizedStatus === "Succeeded" ? new Date() : null,
-          status: appointmentStatus, // ✅ keep lifecycle in sync
+            normalizedStatus === "SUCCEEDED" ? new Date() : null,
+          status: appointmentStatus,
         },
       },
-      { new: true }
+      { new: true, session }
     );
 
     if (!updated) {
@@ -115,6 +131,8 @@ router.post("/", async (req, res) => {
         "⚠️ No matching Order or Appointment for referenceId:",
         referenceId
       );
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).send("Record not found");
     }
 
@@ -125,19 +143,18 @@ router.post("/", async (req, res) => {
       status: updated.status,
     });
 
-    // ✅ Update linked invoice
     const updatedInvoice = await Invoice.findOneAndUpdate(
       { sourceId: updated._id, sourceType: "Appointment" },
       {
         paymentStatus: normalizedStatus,
-        status: normalizedStatus === "Succeeded" ? "Paid" : "Unpaid",
-        paidAt: normalizedStatus === "Succeeded" ? new Date() : null,
+        status: normalizedStatus === "SUCCEEDED" ? "Paid" : "Unpaid",
+        paidAt: normalizedStatus === "SUCCEEDED" ? new Date() : null,
         appointmentStatus: updated.status,
         mechanic: updated.mechanic,
         date: updated.date,
         time: updated.time,
       },
-      { new: true }
+      { new: true, session }
     );
 
     if (updatedInvoice) {
@@ -152,9 +169,18 @@ router.post("/", async (req, res) => {
       });
     }
 
+    await session.commitTransaction();
+    session.endSession();
     return res.status(200).send("Webhook received (Appointment)");
   } catch (err) {
-    console.error("❌ Webhook processing error:", err.message);
+    if (session.inTransaction()) await session.abortTransaction();
+    session.endSession();
+    console.error(
+      "❌ Webhook processing error:",
+      err.message,
+      err.stack,
+      req.body
+    );
     return res.status(500).send("Error processing webhook");
   }
 });

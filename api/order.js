@@ -22,7 +22,6 @@ router.post("/", async (req, res) => {
     payment,
   } = req.body;
 
-  // ✅ Defensive check
   if (!userId || !Array.isArray(selectedItems) || selectedItems.length === 0) {
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
@@ -31,17 +30,16 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    // ✅ Lookup user
     const user = await Users.findById(userId).session(session);
     if (!user) throw new Error(`User not found: ${userId}`);
 
     const orderItems = [];
     const invoiceItems = [];
+    const stockLogs = [];
 
-    // ✅ Build order + invoice items
     for (const item of selectedItems) {
       const product = await Product.findById(item.product).session(session);
-      if (!product) throw new Error(`Product not found: ${item.product}`);
+      if (!product) throw new Error(`Invalid product ID: ${item.product}`);
 
       if (product.stock < item.quantity) {
         throw new Error(
@@ -49,30 +47,32 @@ router.post("/", async (req, res) => {
         );
       }
 
-      // Update stock
       product.stock -= item.quantity;
       await product.save({ session });
 
-      // Order item
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
         status: "For Approval",
       });
 
-      // Invoice item
       invoiceItems.push({
         description: product.productName,
         quantity: item.quantity,
         unitPrice: product.price,
         lineTotal: product.price * item.quantity,
       });
+
+      stockLogs.push({
+        productId: product._id,
+        change: -Math.abs(item.quantity),
+        reason: "Order",
+      });
     }
 
     const normalizedPaymentMethod =
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
-    // ✅ Create order
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -99,10 +99,9 @@ router.post("/", async (req, res) => {
       Math.random() * 10000
     )}`;
 
-    // ✅ Create invoice linked to order
     const newInvoice = new Invoice({
       user: user._id,
-      invoiceNumber, // replace with sequential generator if needed
+      invoiceNumber,
       sourceType: "Order",
       sourceId: savedOrder._id,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -119,29 +118,14 @@ router.post("/", async (req, res) => {
 
     await newInvoice.save({ session });
 
-    // ✅ Log stock changes
-    for (const item of selectedItems) {
-      try {
-        await StockLog.create(
-          [
-            {
-              productId: item.product,
-              orderId: savedOrder._id,
-              change: -Math.abs(item.quantity || 0),
-              reason: "Order",
-            },
-          ],
-          { session }
-        );
-        console.log(
-          `📒 Stock log created for product ${item.product}, order ${savedOrder._id}`
-        );
-      } catch (logErr) {
-        console.warn("⚠️ Failed to log stock change:", logErr.message);
-      }
+    if (stockLogs.length > 0) {
+      await StockLog.insertMany(
+        stockLogs.map((log) => ({ ...log, orderId: savedOrder._id })),
+        { session }
+      );
+      console.log(`📒 Stock logs created for order ${savedOrder._id}`);
     }
 
-    // ✅ Update cart
     await Cart.findOneAndUpdate(
       { userId },
       {
@@ -155,7 +139,6 @@ router.post("/", async (req, res) => {
     );
     console.log("🛒 Cart updated for user:", userId);
 
-    // ✅ Populate order for response
     const confirmed = await Order.findById(savedOrder._id)
       .session(session)
       .populate({
@@ -165,9 +148,15 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Commit transaction
     await session.commitTransaction();
     session.endSession();
+
+    // ✅ Broadcast order + invoice for real-time updates
+    broadcastEntity("order", confirmed.toObject(), "update");
+    console.log("📡 Broadcasted order:update", { orderId: confirmed._id });
+
+    broadcastEntity("invoice", newInvoice.toObject(), "update");
+    console.log("📡 Broadcasted invoice:update", { invoiceId: newInvoice._id });
 
     res.status(201).json({ order: confirmed, invoice: newInvoice });
   } catch (err) {
@@ -175,18 +164,6 @@ router.post("/", async (req, res) => {
     session.endSession();
     console.error("❌ Error during checkout:", err.message);
     res.status(500).json({ error: err.message });
-  }
-});
-
-// 📦 Get all orders or filter by userId and status
-router.get("/", async (req, res) => {
-  try {
-    const orders = await Order.find().populate("items.product").lean(); // ✅ plain object with all fields
-
-    res.status(200).json(orders);
-  } catch (err) {
-    console.error("❌ Error fetching orders:", err.message);
-    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 

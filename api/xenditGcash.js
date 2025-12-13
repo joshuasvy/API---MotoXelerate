@@ -19,9 +19,8 @@ router.post("/", async (req, res) => {
       orderId,
     });
 
-    // Defensive check: required fields
+    // ✅ Defensive check
     if (!amount || !userId) {
-      console.warn("⚠️ Missing amount or userId:", { amount, userId });
       return res.status(400).json({ error: "Missing amount or userId" });
     }
 
@@ -31,18 +30,22 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: "Missing Xendit API key" });
     }
 
-    const callbackUrl = "https://api-motoxelerate.onrender.com/api/webhooks";
+    const safeAmount = Math.floor(Number(amount));
+    if (isNaN(safeAmount) || safeAmount <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
+
+    // ✅ Generate unique referenceId
     const referenceId = `XenditPay-${userId}-${Date.now()}-${Math.floor(
       Math.random() * 10000
     )}`;
     console.log("🔑 Generated referenceId:", referenceId);
 
-    const safeAmount = Math.floor(Number(amount));
-    if (isNaN(safeAmount) || safeAmount <= 0) {
-      console.warn("⚠️ Invalid amount provided:", amount);
-      return res.status(400).json({ error: "Invalid amount" });
-    }
+    // ✅ Align callback URL with Xendit expectations
+    const callbackUrl =
+      "https://api-motoxelerate.onrender.com/api/gcash/webhook";
 
+    // ✅ Include orderId/appointmentId in redirect URLs
     const payload = {
       reference_id: referenceId,
       currency: "PHP",
@@ -50,8 +53,12 @@ router.post("/", async (req, res) => {
       checkout_method: "ONE_TIME_PAYMENT",
       channel_code: "PH_GCASH",
       channel_properties: {
-        success_redirect_url: `https://api-motoxelerate.onrender.com/api/redirect/gcash-success?reference_id=${referenceId}&type=${type}`,
-        failure_redirect_url: `https://api-motoxelerate.onrender.com/api/redirect/gcash-failure?reference_id=${referenceId}&type=${type}`,
+        success_redirect_url: `https://api-motoxelerate.onrender.com/api/redirect/gcash-success?reference_id=${referenceId}&type=${type}&orderId=${
+          orderId || ""
+        }&appointmentId=${appointmentId || ""}`,
+        failure_redirect_url: `https://api-motoxelerate.onrender.com/api/redirect/gcash-failure?reference_id=${referenceId}&type=${type}&orderId=${
+          orderId || ""
+        }&appointmentId=${appointmentId || ""}`,
       },
       callback_url: callbackUrl,
     };
@@ -75,34 +82,43 @@ router.post("/", async (req, res) => {
       throw new Error(`Unexpected response status: ${response.status}`);
     }
 
+    // ✅ Update appointment or order with payment details
     let updatedDoc = null;
     if (type === "appointment" && appointmentId) {
-      updatedDoc = await Appointments.findByIdAndUpdate(appointmentId, {
-        $set: {
-          "payment.referenceId": referenceId,
-          "payment.chargeId": response.data.id,
-          "payment.amount": safeAmount,
-          "payment.status": "Pending",
-          "payment.paidAt": null,
-          "payment.method": "GCash",
+      updatedDoc = await Appointments.findByIdAndUpdate(
+        appointmentId,
+        {
+          $set: {
+            "payment.referenceId": referenceId,
+            "payment.chargeId": response.data.id,
+            "payment.amount": safeAmount,
+            "payment.status": "Pending",
+            "payment.paidAt": null,
+            "payment.method": "GCash",
+          },
         },
-      });
+        { new: true }
+      );
       console.log(
         updatedDoc
           ? `✅ Appointment updated: ${appointmentId}`
           : `⚠️ Appointment not found: ${appointmentId}`
       );
     } else if (type === "order" && orderId) {
-      updatedDoc = await Orders.findByIdAndUpdate(orderId, {
-        $set: {
-          "payment.referenceId": referenceId,
-          "payment.chargeId": response.data.id,
-          "payment.amount": safeAmount,
-          "payment.status": "Pending",
-          "payment.paidAt": null,
-          "payment.method": "GCash",
+      updatedDoc = await Orders.findByIdAndUpdate(
+        orderId,
+        {
+          $set: {
+            "payment.referenceId": referenceId,
+            "payment.chargeId": response.data.id,
+            "payment.amount": safeAmount,
+            "payment.status": "Pending",
+            "payment.paidAt": null,
+            "payment.method": "GCash",
+          },
         },
-      });
+        { new: true }
+      );
       console.log(
         updatedDoc
           ? `✅ Order updated: ${orderId}`
@@ -115,6 +131,7 @@ router.post("/", async (req, res) => {
       );
     }
 
+    // ✅ Return checkout URLs to frontend
     res.json({
       checkout_url: response.data.actions?.desktop_web_checkout_url,
       mobile_checkout_url: response.data.actions?.mobile_web_checkout_url,
