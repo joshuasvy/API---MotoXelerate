@@ -43,6 +43,7 @@ router.post("/from-order/:orderId", async (req, res) => {
     console.log("💳 Payment status detected:", paymentStatus);
 
     const invoice = new Invoice({
+      user: order.userId,
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "Order",
       sourceId: order._id,
@@ -111,9 +112,13 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
     const paymentStatus =
       rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
+      Math.random() * 10000
+    )}`;
+
     const invoice = new Invoice({
       user: appointment.userId,
-      invoiceNumber: `INV-${Date.now()}`,
+      invoiceNumber,
       sourceType: "Appointment",
       sourceId: appointment._id,
       customerName: appointment.customer_Name,

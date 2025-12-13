@@ -1,23 +1,41 @@
 import mongoose from "mongoose";
 import Invoice from "./models/Invoice.js";
+import dotenv from "dotenv";
+import Appointment from "./models/Appointments.js";
+import Order from "./models/Orders.js";
 
-const MONGO_URI =
-  "mongodb+srv://joshuapaulcortez_db_user:motoxelerate@motoxeleratecluster.kzhtuvj.mongodb.net/motoXelerate"; // adjust to your DB
+dotenv.config();
 
-async function patchInvoices() {
-  await mongoose.connect(MONGO_URI);
+const migrateInvoices = async () => {
+  await mongoose.connect(process.env.MONGO_URI);
 
-  console.log("🔄 Patching invoices with lowercase sourceType...");
+  const invoices = await Invoice.find().populate("sourceId");
 
-  const result = await Invoice.updateMany(
-    { sourceType: "appointment" }, // find lowercase values
-    { $set: { sourceType: "Appointment" } } // normalize to capitalized
-  );
+  for (const inv of invoices) {
+    try {
+      let userId = null;
 
-  console.log(
-    `✅ Updated ${result.modifiedCount} invoices to use 'Appointment'`
-  );
+      if (inv.sourceType === "Appointment" && inv.sourceId) {
+        userId = inv.sourceId.userId; // assuming Appointment has userId
+      } else if (inv.sourceType === "Order" && inv.sourceId) {
+        userId = inv.sourceId.userId; // assuming Order has userId
+      }
+
+      if (userId) {
+        inv.user = userId;
+        await inv.save();
+        console.log(
+          `✅ Updated invoice ${inv.invoiceNumber} with user ${userId}`
+        );
+      } else {
+        console.warn(`⚠️ No user found for invoice ${inv.invoiceNumber}`);
+      }
+    } catch (err) {
+      console.error(`❌ Error updating invoice ${inv._id}:`, err);
+    }
+  }
+
   await mongoose.disconnect();
-}
+};
 
-patchInvoices();
+migrateInvoices();

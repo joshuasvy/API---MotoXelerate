@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import Users from "../models/Users.js";
 import Admin from "../models/Admin.js";
 
+
 export const authToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;

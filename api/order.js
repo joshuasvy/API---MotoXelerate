@@ -12,12 +12,6 @@ const router = express.Router();
 
 // 🛒 Create a new order
 router.post("/", async (req, res) => {
-  console.log("🧪 Incoming payload:", JSON.stringify(req.body, null, 2));
-  console.log("📥 Payment fields received:", req.body.payment);
-  if (!req.body.payment?.referenceId) {
-    console.warn("⚠️ Missing referenceId in order payload");
-  }
-
   const {
     userId,
     selectedItems,
@@ -28,19 +22,8 @@ router.post("/", async (req, res) => {
     payment,
   } = req.body;
 
-  console.log("📥 Payment fields received:", payment);
-
-  // Defensive check: basic payload validation
-  if (
-    !userId ||
-    !selectedItems ||
-    !Array.isArray(selectedItems) ||
-    selectedItems.length === 0
-  ) {
-    console.warn("⚠️ Missing or invalid checkout data:", {
-      userId,
-      selectedItems,
-    });
+  // ✅ Defensive check
+  if (!userId || !Array.isArray(selectedItems) || selectedItems.length === 0) {
     return res.status(400).json({ error: "Missing or invalid checkout data." });
   }
 
@@ -48,79 +31,48 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    console.log("🔍 Looking up user:", userId);
+    // ✅ Lookup user
     const user = await Users.findById(userId).session(session);
-    if (!user) {
-      console.error("❌ User not found:", userId);
-      throw new Error(`User not found: ${userId}`);
-    }
+    if (!user) throw new Error(`User not found: ${userId}`);
 
     const orderItems = [];
+    const invoiceItems = [];
 
+    // ✅ Build order + invoice items
     for (const item of selectedItems) {
-      console.log("🔍 Checking product:", item.product);
       const product = await Product.findById(item.product).session(session);
-      if (!product) {
-        console.error("❌ Product not found:", item.product);
-        throw new Error(`Product not found: ${item.product}`);
-      }
-
-      const requiredFields = ["productName", "price", "image", "category"];
-      const missing = requiredFields.filter(
-        (field) => product[field] === undefined || product[field] === null
-      );
-      if (missing.length > 0) {
-        console.error(
-          `❌ Product ${product._id} missing fields: ${missing.join(", ")}`
-        );
-        throw new Error(
-          `Product ${product._id} is missing fields: ${missing.join(", ")}`
-        );
-      }
+      if (!product) throw new Error(`Product not found: ${item.product}`);
 
       if (product.stock < item.quantity) {
-        console.error(
-          `❌ Insufficient stock for ${product.productName}. Available: ${product.stock}, Requested: ${item.quantity}`
+        throw new Error(
+          `Insufficient stock for ${product.productName}. Available: ${product.stock}, Requested: ${item.quantity}`
         );
-        throw new Error(`Insufficient stock for ${product.productName}`);
       }
 
+      // Update stock
       product.stock -= item.quantity;
       await product.save({ session });
-      console.log(
-        `✅ Stock updated for ${product.productName}. Remaining: ${product.stock}`
-      );
 
+      // Order item
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
         status: "For Approval",
+      });
+
+      // Invoice item
+      invoiceItems.push({
+        description: product.productName,
+        quantity: item.quantity,
+        unitPrice: product.price,
+        lineTotal: product.price * item.quantity,
       });
     }
 
     const normalizedPaymentMethod =
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
-    console.log("📦 Creating new order with payload:", {
-      userId,
-      customerName: `${user.firstName} ${user.lastName}`,
-      customerEmail: user.email,
-      customerPhone: user.contact,
-      items: orderItems,
-      totalOrder,
-      paymentMethod: normalizedPaymentMethod,
-      deliveryAddress: deliveryAddress || user.address,
-      notes,
-      payment: {
-        referenceId: payment?.referenceId,
-        chargeId: payment?.chargeId,
-        amount: payment?.amount || totalOrder,
-        status: payment?.status || "Pending",
-        paidAt: null,
-        method: payment?.method || "GCash",
-      },
-    });
-
+    // ✅ Create order
     const newOrder = new Order({
       userId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -142,31 +94,32 @@ router.post("/", async (req, res) => {
     });
 
     const savedOrder = await newOrder.save({ session });
-    console.log("✅ Order saved:", savedOrder?._id);
 
-    if (!savedOrder || !savedOrder._id) {
-      console.error("❌ Order save failed");
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(500).json({ error: "Order save failed" });
-    }
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
+      Math.random() * 10000
+    )}`;
 
-    const confirmed = await Order.findById(savedOrder._id)
-      .session(session)
-      .populate({
-        path: "items.product",
-        model: "Product",
-        select: "productName specification price image",
-        strictPopulate: false,
-      });
+    // ✅ Create invoice linked to order
+    const newInvoice = new Invoice({
+      user: user._id,
+      invoiceNumber, // replace with sequential generator if needed
+      sourceType: "Order",
+      sourceId: savedOrder._id,
+      customerName: `${user.firstName} ${user.lastName}`,
+      customerEmail: user.email,
+      customerPhone: user.contact,
+      paymentMethod: normalizedPaymentMethod,
+      paymentStatus: payment?.status || "Pending",
+      referenceId: payment?.referenceId,
+      items: invoiceItems,
+      subtotal: totalOrder,
+      total: totalOrder,
+      status: "Unpaid",
+    });
 
-    if (!confirmed) {
-      console.error("❌ Failed to retrieve saved order:", savedOrder._id);
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(500).json({ error: "Failed to retrieve saved order" });
-    }
+    await newInvoice.save({ session });
 
+    // ✅ Log stock changes
     for (const item of selectedItems) {
       try {
         await StockLog.create(
@@ -188,6 +141,7 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // ✅ Update cart
     await Cart.findOneAndUpdate(
       { userId },
       {
@@ -201,18 +155,25 @@ router.post("/", async (req, res) => {
     );
     console.log("🛒 Cart updated for user:", userId);
 
+    // ✅ Populate order for response
+    const confirmed = await Order.findById(savedOrder._id)
+      .session(session)
+      .populate({
+        path: "items.product",
+        model: "Product",
+        select: "productName specification price image",
+        strictPopulate: false,
+      });
+
+    // ✅ Commit transaction
     await session.commitTransaction();
     session.endSession();
-    console.log("✅ Transaction committed successfully");
 
-    res.status(201).json(confirmed);
+    res.status(201).json({ order: confirmed, invoice: newInvoice });
   } catch (err) {
-    if (session.inTransaction()) {
-      console.warn("⚠️ Aborting transaction due to error");
-      await session.abortTransaction();
-    }
+    if (session.inTransaction()) await session.abortTransaction();
     session.endSession();
-    console.error("❌ Error during checkout:", err.message, err.stack);
+    console.error("❌ Error during checkout:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

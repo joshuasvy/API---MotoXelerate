@@ -14,30 +14,22 @@ router.post("/", authToken, async (req, res) => {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
 
-    // ✅ Validate required fields
     if (!date || !time || !service_Type || !service_Charge) {
-      console.warn("⚠️ Missing required fields in invoice request:", req.body);
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // ✅ Fetch user
     const user = await Users.findById(userId);
-    if (!user) {
-      console.error("❌ User not found for ID:", userId);
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const downpaymentAmount = Math.round(Number(service_Charge) * 0.5);
 
-    // ✅ Parse date safely
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
-      console.warn("⚠️ Invalid date format received:", date);
       return res.status(400).json({ message: "Invalid date format." });
     }
 
-    // ✅ Create Appointment with embedded customer info
+    // ✅ Create Appointment
     const newAppointment = new Appointments({
       userId,
       customer_Name: fullName,
@@ -62,12 +54,18 @@ router.post("/", authToken, async (req, res) => {
 
     await newAppointment.save();
     console.log("📦 Saved appointment:", newAppointment);
+
+    // ✅ Broadcast for real-time updates
     broadcastEntity("appointment", newAppointment, "update");
     console.log("📡 Broadcasting appointment:", newAppointment.status);
 
     // ✅ Create Invoice linked to Appointment
-    const invoiceNumber = `INV-${Date.now()}`;
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
+      Math.random() * 10000
+    )}`;
+
     const newInvoice = new Invoice({
+      user: user._id, // safer than req.user.id
       invoiceNumber,
       sourceType: "Appointment",
       sourceId: newAppointment._id,
@@ -88,8 +86,6 @@ router.post("/", authToken, async (req, res) => {
       subtotal: Number(service_Charge),
       total: Number(service_Charge),
       status: "Unpaid",
-
-      // ✅ Appointment summary fields
       appointmentId: newAppointment._id,
       serviceType: service_Type,
       mechanic: "",
@@ -99,6 +95,7 @@ router.post("/", authToken, async (req, res) => {
     });
 
     await newInvoice.save();
+
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: newAppointment,
