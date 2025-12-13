@@ -1,11 +1,11 @@
 import express from "express";
-import dotenv from "dotenv";
 import axios from "axios";
 import https from "https";
-import Appointments from "../models/Appointments.js";
 import Orders from "../models/Orders.js";
+import Appointments from "../models/Appointments.js";
+import Invoice from "../models/Invoice.js";
+import { broadcastEntity } from "../utils/broadcast.js";
 
-dotenv.config();
 const router = express.Router();
 
 router.post("/", async (req, res) => {
@@ -19,14 +19,12 @@ router.post("/", async (req, res) => {
       orderId,
     });
 
-    // ✅ Defensive check
     if (!amount || !userId) {
       return res.status(400).json({ error: "Missing amount or userId" });
     }
 
     const xenditKey = process.env.XENDIT_GCASH_API;
     if (!xenditKey) {
-      console.error("❌ Missing Xendit API key");
       return res.status(500).json({ error: "Missing Xendit API key" });
     }
 
@@ -35,17 +33,14 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Invalid amount" });
     }
 
-    // ✅ Generate unique referenceId
     const referenceId = `XenditPay-${userId}-${Date.now()}-${Math.floor(
       Math.random() * 10000
     )}`;
     console.log("🔑 Generated referenceId:", referenceId);
 
-    // ✅ Align callback URL with Xendit expectations
     const callbackUrl =
       "https://api-motoxelerate.onrender.com/api/gcash/webhook";
 
-    // ✅ Include orderId/appointmentId in redirect URLs
     const payload = {
       reference_id: referenceId,
       currency: "PHP",
@@ -82,8 +77,8 @@ router.post("/", async (req, res) => {
       throw new Error(`Unexpected response status: ${response.status}`);
     }
 
-    // ✅ Update appointment or order with payment details
     let updatedDoc = null;
+
     if (type === "appointment" && appointmentId) {
       updatedDoc = await Appointments.findByIdAndUpdate(
         appointmentId,
@@ -99,11 +94,23 @@ router.post("/", async (req, res) => {
         },
         { new: true }
       );
-      console.log(
-        updatedDoc
-          ? `✅ Appointment updated: ${appointmentId}`
-          : `⚠️ Appointment not found: ${appointmentId}`
-      );
+
+      if (updatedDoc) {
+        // ✅ Update linked invoice
+        const updatedInvoice = await Invoice.findOneAndUpdate(
+          { sourceId: updatedDoc._id, sourceType: "Appointment" },
+          {
+            paymentStatus: "Pending",
+            referenceId,
+            status: "Unpaid",
+          },
+          { new: true }
+        );
+
+        broadcastEntity("appointment", updatedDoc.toObject(), "update");
+        if (updatedInvoice)
+          broadcastEntity("invoice", updatedInvoice.toObject(), "update");
+      }
     } else if (type === "order" && orderId) {
       updatedDoc = await Orders.findByIdAndUpdate(
         orderId,
@@ -119,11 +126,23 @@ router.post("/", async (req, res) => {
         },
         { new: true }
       );
-      console.log(
-        updatedDoc
-          ? `✅ Order updated: ${orderId}`
-          : `⚠️ Order not found: ${orderId}`
-      );
+
+      if (updatedDoc) {
+        // ✅ Update linked invoice
+        const updatedInvoice = await Invoice.findOneAndUpdate(
+          { sourceId: updatedDoc._id, sourceType: "Order" },
+          {
+            paymentStatus: "Pending",
+            referenceId,
+            status: "Unpaid",
+          },
+          { new: true }
+        );
+
+        broadcastEntity("order", updatedDoc.toObject(), "update");
+        if (updatedInvoice)
+          broadcastEntity("invoice", updatedInvoice.toObject(), "update");
+      }
     } else {
       console.warn(
         "⚠️ No valid appointmentId or orderId provided for type:",
@@ -131,7 +150,6 @@ router.post("/", async (req, res) => {
       );
     }
 
-    // ✅ Return checkout URLs to frontend
     res.json({
       checkout_url: response.data.actions?.desktop_web_checkout_url,
       mobile_checkout_url: response.data.actions?.mobile_web_checkout_url,

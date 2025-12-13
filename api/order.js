@@ -6,6 +6,7 @@ import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Users from "../models/Users.js";
 import StockLog from "../models/StockLog.js";
+import Invoice from "../models/Invoice.js";
 import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
@@ -119,14 +120,18 @@ router.post("/", async (req, res) => {
     await newInvoice.save({ session });
 
     if (stockLogs.length > 0) {
-      await StockLog.insertMany(
+      const createdLogs = await StockLog.insertMany(
         stockLogs.map((log) => ({ ...log, orderId: savedOrder._id })),
         { session }
       );
       console.log(`📒 Stock logs created for order ${savedOrder._id}`);
+
+      createdLogs.forEach((log) => {
+        broadcastEntity("stocklog", log.toObject(), "update");
+      });
     }
 
-    await Cart.findOneAndUpdate(
+    const updatedCart = await Cart.findOneAndUpdate(
       { userId },
       {
         $pull: {
@@ -151,12 +156,10 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ Broadcast order + invoice for real-time updates
+    // ✅ Broadcast order + invoice + cart
     broadcastEntity("order", confirmed.toObject(), "update");
-    console.log("📡 Broadcasted order:update", { orderId: confirmed._id });
-
     broadcastEntity("invoice", newInvoice.toObject(), "update");
-    console.log("📡 Broadcasted invoice:update", { invoiceId: newInvoice._id });
+    if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
 
     res.status(201).json({ order: confirmed, invoice: newInvoice });
   } catch (err) {
