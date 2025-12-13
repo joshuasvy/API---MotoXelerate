@@ -3,6 +3,7 @@ import Invoice from "../models/Invoice.js";
 import Orders from "../models/Orders.js";
 import Appointments from "../models/Appointments.js";
 import User from "../models/Users.js";
+import { authToken } from "../middleware/authToken.js";
 
 const router = express.Router();
 
@@ -176,6 +177,22 @@ router.get("/:id", async (req, res) => {
     res.json(invoice);
   } catch (err) {
     console.error("❌ Error fetching invoice:", err.message, err.stack);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User invoices
+router.get("/me", authToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const invoices = await Invoice.find({ sourceId: userId })
+      .sort({ createdAt: -1 })
+      .populate("sourceId");
+
+    res.json(invoices);
+  } catch (err) {
+    console.error("❌ Error fetching user invoices:", err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });

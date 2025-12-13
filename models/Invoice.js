@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import User from "./Users.js"; // adjust path to your Users model
+import User from "./Users.js";
 
 const invoiceItemSchema = new mongoose.Schema(
   {
@@ -31,14 +31,10 @@ const invoiceSchema = new mongoose.Schema(
       required: true,
       refPath: "sourceType",
     },
-
-    // Customer
     customerName: { type: String, required: true },
     customerAddress: { type: String },
     customerEmail: { type: String },
     customerPhone: { type: String },
-
-    // Payment
     paymentMethod: { type: String, required: true },
     paymentStatus: {
       type: String,
@@ -47,11 +43,7 @@ const invoiceSchema = new mongoose.Schema(
     },
     referenceId: { type: String, index: true },
     paidAt: { type: Date, default: null },
-
-    // Items
     items: { type: [invoiceItemSchema], default: [] },
-
-    // Totals
     subtotal: { type: Number, required: true, min: 0 },
     total: { type: Number, required: true, min: 0 },
     status: {
@@ -59,8 +51,6 @@ const invoiceSchema = new mongoose.Schema(
       enum: ["Unpaid", "Paid", "Cancelled", "Refunded"],
       default: "Unpaid",
     },
-
-    // Appointment-specific fields
     appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment" },
     serviceType: { type: String },
     mechanic: { type: String },
@@ -74,7 +64,6 @@ const invoiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Pre-save hook to auto-fill customerEmail and customerPhone
 invoiceSchema.pre("save", async function (next) {
   try {
     if (
