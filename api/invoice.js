@@ -112,6 +112,7 @@ router.post("/from-appointment/:appointmentId", async (req, res) => {
       rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
     const invoice = new Invoice({
+      user: appointment.userId,
       invoiceNumber: `INV-${Date.now()}`,
       sourceType: "Appointment",
       sourceId: appointment._id,
