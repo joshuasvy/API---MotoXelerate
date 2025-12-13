@@ -187,24 +187,24 @@ router.get("/user/:userId", authToken, async (req, res) => {
   }
 });
 
-router.put("/:id", authToken, async (req, res) => {
+router.get("/:id", authToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const query =
+      req.user.role === "admin"
+        ? { _id: id }
+        : { _id: id, userId: req.user.id };
 
-    const updated = await Appointments.findByIdAndUpdate(id, updates, {
-      new: true,
-    });
+    const appointment = await Appointments.findOne(query).lean();
 
-    if (!updated) {
-      return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment) {
+      console.warn("⚠️ Appointment not found:", id);
+      return res.status(404).json({ message: "Appointment not found." });
     }
 
-    return res
-      .status(200)
-      .json({ message: "Appointment updated", appointment: updated });
+    return res.status(200).json(appointment);
   } catch (err) {
-    console.error("❌ Update error:", err.message);
+    console.error("❌ Fetch single appointment error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
