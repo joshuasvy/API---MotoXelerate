@@ -461,7 +461,6 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
     console.log("➡️ orderId:", orderId);
     console.log("➡️ reason:", reason);
 
-    // Validate input
     if (!reason || typeof reason !== "string") {
       console.warn("⚠️ Missing or invalid cancellation reason");
       return res.status(400).json({ error: "Cancellation reason is required" });
@@ -479,7 +478,6 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       currentCancellationStatus: order.cancellationStatus,
     });
 
-    // Update cancellation fields
     order.cancellationStatus = "Requested";
     order.cancellationReason = reason;
     await order.save();
@@ -490,7 +488,6 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       cancellationReason: order.cancellationReason,
     });
 
-    // Create a notification log entry
     await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRequest",
@@ -503,23 +500,18 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
 
     console.log("📝 NotificationLog entry created for cancellation request");
 
-    // Broadcast updates
-    if (order.cancellationStatus === "Requested") {
-      broadcastEntity(
-        "notification",
-        {
-          type: "CancellationRequest",
-          orderId: order._id.toString(),
-          customerName: order.customerName,
-          reason: order.cancellationReason,
-        },
-        "create"
-      );
-    } else {
-      broadcastEntity("order", order.toObject(), "update");
-    }
+    broadcastEntity(
+      "notification",
+      {
+        type: "CancellationRequest",
+        orderId: order._id.toString(),
+        customerName: order.customerName,
+        reason: order.cancellationReason,
+      },
+      "create"
+    );
 
-    console.log("📡 Broadcasted order + notification update");
+    console.log("📡 Broadcasted cancellation request notification");
 
     res.json({ message: "Cancellation requested", order });
   } catch (err) {
