@@ -4,7 +4,10 @@ import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 
-// ✅ Mark all notifications as read for a user
+/**
+ * ✅ Mark all notifications as read for a user
+ * PUT /api/notifications/:userId/mark-read
+ */
 router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
   try {
@@ -19,35 +22,50 @@ router.put("/:userId/mark-read", async (req, res) => {
       "update"
     );
 
-    res.json({ success: true, marked: result.modifiedCount });
+    return res.json({ success: true, marked: result.modifiedCount });
   } catch (err) {
-    res.status(500).json({
+    console.error("❌ Failed to mark all notifications:", err.message);
+    return res.status(500).json({
       error: "Failed to mark notifications as read",
       details: err.message,
     });
   }
 });
 
-// ✅ Mark a single notification as read
-router.put("/:id/read", async (req, res) => {
+/**
+ * ✅ Mark a single notification as read
+ * PATCH /api/notifications/:id/read
+ */
+router.patch("/:id/read", async (req, res) => {
   try {
     const notif = await NotificationLog.findById(req.params.id);
-    if (!notif)
+    if (!notif) {
       return res.status(404).json({ error: "Notification not found" });
+    }
 
     notif.readAt = new Date();
     await notif.save();
 
-    res.json({ success: true, notification: notif });
+    broadcastEntity(
+      "notification",
+      { id: notif._id.toString(), action: "mark-read" },
+      "update"
+    );
+
+    return res.json({ success: true, notification: notif });
   } catch (err) {
-    res.status(500).json({
+    console.error("❌ Failed to mark notification:", err.message);
+    return res.status(500).json({
       error: "Failed to mark notification as read",
       details: err.message,
     });
   }
 });
 
-// ✅ Fetch notifications for a user
+/**
+ * ✅ Fetch notifications for a user
+ * GET /api/notifications/:userId
+ */
 router.get("/:userId", async (req, res) => {
   try {
     const notifications = await NotificationLog.find({
@@ -56,11 +74,13 @@ router.get("/:userId", async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    res.json(notifications);
+    return res.json(notifications);
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to fetch notifications", details: err.message });
+    console.error("❌ Failed to fetch notifications:", err.message);
+    return res.status(500).json({
+      error: "Failed to fetch notifications",
+      details: err.message,
+    });
   }
 });
 
