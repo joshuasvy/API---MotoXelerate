@@ -171,6 +171,60 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.get("/", authToken, async (req, res) => {
+  try {
+    console.log("🛠 Fetch all orders route triggered");
+
+    const orders = await Order.find().sort({ createdAt: -1 }).populate({
+      path: "items.product",
+      model: "Product",
+      select: "productName specification price image",
+      strictPopulate: false,
+    });
+
+    if (!orders || orders.length === 0) {
+      console.warn("⚠️ No orders found in database");
+      return res.status(200).json([]);
+    }
+
+    const formattedOrders = orders.map((order) => {
+      const formattedItems = (order.items || []).map((item) => ({
+        productId: item.product?._id,
+        productName: item.product?.productName,
+        specification: item.product?.specification,
+        price: item.product?.price,
+        image: item.product?.image,
+        quantity: item.quantity,
+        status: item.status,
+        read: item.read === false ? false : true,
+      }));
+
+      return {
+        _id: order._id, // MongoDB ObjectId
+        orderId: order._id.toString(), // alias if needed
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        orderDate: order.createdAt,
+        totalOrder: order.totalOrder,
+        paymentStatus: order.payment?.status ?? "N/A",
+        paidAt: order.payment?.paidAt ?? null,
+        deliveryAddress: order.deliveryAddress || "No address provided",
+        notes: order.notes || "",
+        items: formattedItems,
+      };
+    });
+
+    console.log("✅ Returning all orders:", formattedOrders.length);
+    res.status(200).json(formattedOrders);
+  } catch (err) {
+    console.error("❌ Failed to fetch all orders:", err.message);
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
+  }
+});
+
 // 📦 Get orders by user
 router.get("/user/:userId", async (req, res) => {
   const { userId } = req.params;
@@ -435,6 +489,50 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
     res.json({ message: "Cancellation requested", order });
   } catch (err) {
     console.error("❌ Error requesting cancellation:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id/accept-cancel", authToken, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    console.log("🛠 AcceptCancel route triggered");
+    console.log("Received orderId param:", orderId);
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.warn(`⚠️ No order found with _id=${orderId}`);
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Only allow acceptance if cancellation was requested
+    if (order.cancellationStatus !== "Requested") {
+      console.warn(
+        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
+      );
+      return res.status(400).json({
+        error: "Cancellation must be requested before it can be accepted",
+      });
+    }
+
+    order.cancellationStatus = "Accepted";
+    order.cancelledAt = new Date();
+    await order.save();
+
+    console.log("✅ Cancellation accepted:", {
+      _id: order._id.toString(),
+      cancellationStatus: order.cancellationStatus,
+      cancellationReason: order.cancellationReason,
+      cancelledAt: order.cancelledAt,
+    });
+
+    broadcastEntity("order", order.toObject(), "update");
+    console.log("📡 Broadcasted order update for cancellation acceptance");
+
+    res.json({ message: "Cancellation accepted", order });
+  } catch (err) {
+    console.error("❌ Error accepting cancellation:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

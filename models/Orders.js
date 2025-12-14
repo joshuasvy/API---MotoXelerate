@@ -9,7 +9,14 @@ const orderItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   status: {
     type: String,
-    enum: ["For Approval", "To ship", "Ship", "Delivered", "Completed"],
+    enum: [
+      "For Approval",
+      "To ship",
+      "Ship",
+      "Delivered",
+      "Completed",
+      "Cancelled",
+    ],
     default: "For Approval",
   },
 });
