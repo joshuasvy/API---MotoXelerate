@@ -154,7 +154,6 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Create NotificationLog entry inside transaction
     const notif = new NotificationLog({
       userId,
       orderId: confirmed._id,
@@ -165,11 +164,9 @@ router.post("/", async (req, res) => {
     await notif.save({ session });
     console.log("📒 NotificationLog created:", notif._id);
 
-    // ✅ Commit transaction
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ Broadcast entities AFTER commit
     broadcastEntity("order", confirmed.toObject(), "update");
     broadcastEntity("invoice", newInvoice.toObject(), "update");
     if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
@@ -200,8 +197,6 @@ router.post("/", async (req, res) => {
 
 router.get("/", authToken, async (req, res) => {
   try {
-    console.log("🛠 Fetch all orders route triggered");
-
     const orders = await Order.find().sort({ createdAt: -1 }).populate({
       path: "items.product",
       model: "Product",
@@ -209,10 +204,10 @@ router.get("/", authToken, async (req, res) => {
       strictPopulate: false,
     });
 
-    if (!orders || orders.length === 0) {
-      console.warn("⚠️ No orders found in database");
-      return res.status(200).json([]);
-    }
+    // if (!orders || orders.length === 0) {
+    //   console.warn("⚠️ No orders found in database");
+    //   return res.status(200).json([]);
+    // }
 
     const formattedOrders = orders.map((order) => {
       const formattedItems = (order.items || []).map((item) => ({
@@ -227,8 +222,8 @@ router.get("/", authToken, async (req, res) => {
       }));
 
       return {
-        _id: order._id, // MongoDB ObjectId
-        orderId: order._id.toString(), // alias if needed
+        _id: order._id,
+        orderId: order._id.toString(),
         customerName: order.customerName,
         customerEmail: order.customerEmail,
         customerPhone: order.customerPhone,
