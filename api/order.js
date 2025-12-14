@@ -244,7 +244,6 @@ router.get("/", authToken, async (req, res) => {
       };
     });
 
-    console.log("✅ Returning all orders:", formattedOrders.length);
     res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch all orders:", err.message);

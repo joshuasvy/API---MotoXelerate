@@ -1,41 +1,30 @@
 import mongoose from "mongoose";
-import Invoice from "./models/Invoice.js";
+import NotificationLog from "./models/NotificationLog.js";
 import dotenv from "dotenv";
-import Appointment from "./models/Appointments.js";
-import Order from "./models/Orders.js";
 
 dotenv.config();
 
-const migrateInvoices = async () => {
+async function migrateUserIds() {
   await mongoose.connect(process.env.MONGO_URI);
+  console.log("✅ Connected to MongoDB Atlas");
 
-  const invoices = await Invoice.find().populate("sourceId");
+  const cursor = NotificationLog.find({ userId: { $type: "string" } }).cursor();
 
-  for (const inv of invoices) {
+  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
     try {
-      let userId = null;
-
-      if (inv.sourceType === "Appointment" && inv.sourceId) {
-        userId = inv.sourceId.userId; // assuming Appointment has userId
-      } else if (inv.sourceType === "Order" && inv.sourceId) {
-        userId = inv.sourceId.userId; // assuming Order has userId
-      }
-
-      if (userId) {
-        inv.user = userId;
-        await inv.save();
-        console.log(
-          `✅ Updated invoice ${inv.invoiceNumber} with user ${userId}`
-        );
-      } else {
-        console.warn(`⚠️ No user found for invoice ${inv.invoiceNumber}`);
-      }
+      const objectId = new mongoose.Types.ObjectId(doc.userId);
+      await NotificationLog.updateOne(
+        { _id: doc._id },
+        { $set: { userId: objectId } }
+      );
+      console.log(`✅ Converted userId for notification ${doc._id}`);
     } catch (err) {
-      console.error(`❌ Error updating invoice ${inv._id}:`, err);
+      console.error(`❌ Failed to convert ${doc._id}:`, err.message);
     }
   }
 
   await mongoose.disconnect();
-};
+  console.log("🔒 Migration complete, disconnected from MongoDB");
+}
 
-migrateInvoices();
+migrateUserIds();
