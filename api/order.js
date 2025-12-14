@@ -32,7 +32,7 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    // Normalize userId to ObjectId
+    // Normalize userId once
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
     const user = await Users.findById(userObjectId).session(session);
@@ -157,8 +157,6 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
     // ✅ Create NotificationLog entry inside transaction
     const notif = new NotificationLog({
       userId: userObjectId,
@@ -172,7 +170,7 @@ router.post("/", async (req, res) => {
 
     // ✅ Commit transaction
     await session.commitTransaction();
-    session.endSession();
+    await session.endSession();
     console.log("✅ Transaction committed for order:", savedOrder._id);
 
     // ✅ Broadcast AFTER commit
@@ -198,7 +196,7 @@ router.post("/", async (req, res) => {
       .json({ order: confirmed, invoice: newInvoice, notification: notif });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
-    session.endSession();
+    await session.endSession();
     console.error("❌ Error during checkout:", err.message);
     res.status(500).json({ error: err.message });
   }
