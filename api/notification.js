@@ -71,13 +71,13 @@ router.get("/:userId", async (req, res) => {
     const notifications = await NotificationLog.find({
       userId: req.params.userId,
     })
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 }) // newest first
+      .lean(); // plain JS objects
 
-    return res.json(notifications);
+    res.json(notifications);
   } catch (err) {
     console.error("❌ Failed to fetch notifications:", err.message);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Failed to fetch notifications",
       details: err.message,
     });
