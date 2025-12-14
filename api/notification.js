@@ -89,6 +89,11 @@ router.get("/:userId", async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .lean();
+    console.log(
+      "📤 Sending notifications:",
+      notifications.length,
+      notifications
+    );
     res.json(notifications);
   } catch (err) {
     res
