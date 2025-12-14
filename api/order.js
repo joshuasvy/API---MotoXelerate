@@ -170,14 +170,14 @@ router.post("/", async (req, res) => {
       message: `New order from ${savedOrder.customerName}`,
     });
 
-    // ✅ Broadcast notification event
     broadcastEntity(
       "notification",
       {
+        _id: savedOrder._id.toString(), // or NotificationLog._id
+        orderId: savedOrder._id.toString(),
+        customerName: savedOrder.customerName,
         type: "order",
-        orderId: confirmed._id.toString(),
-        customerName: confirmed.customerName,
-        message: `New order from ${confirmed.customerName}`,
+        message: `New order from ${savedOrder.customerName}`,
       },
       "create"
     );
