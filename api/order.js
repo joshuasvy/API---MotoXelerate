@@ -526,43 +526,42 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
 
-    console.log("🛠 AcceptCancel route triggered");
-    console.log("Received orderId param:", orderId);
-
     const order = await Order.findById(orderId);
     if (!order) {
-      console.warn(`⚠️ No order found with _id=${orderId}`);
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Only allow acceptance if cancellation was requested
-    if (order.cancellationStatus !== "Requested") {
-      console.warn(
-        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
-      );
-      return res.status(400).json({
-        error: "Cancellation must be requested before it can be accepted",
-      });
-    }
-
+    // Update cancellation fields
     order.cancellationStatus = "Accepted";
     order.cancelledAt = new Date();
-    await order.save();
 
-    console.log("✅ Cancellation accepted:", {
-      _id: order._id.toString(),
-      cancellationStatus: order.cancellationStatus,
-      cancellationReason: order.cancellationReason,
-      cancelledAt: order.cancelledAt,
+    // Update all item statuses to Cancelled
+    order.items = order.items.map((item) => {
+      item.status = "Cancelled";
+      return item;
     });
 
-    broadcastEntity("order", order.toObject(), "update");
-    console.log("📡 Broadcasted order update for cancellation acceptance");
+    await order.save();
 
-    res.json({ message: "Cancellation accepted", order });
+    // Broadcast updates
+    broadcastEntity("order", order.toObject(), "update");
+    broadcastEntity(
+      "notification",
+      {
+        type: "CancellationAccepted",
+        orderId: order._id.toString(),
+        customerName: order.customerName,
+        message: `Cancellation accepted for ${order.customerName}`,
+      },
+      "create"
+    );
+
+    res.json({ message: "Cancellation accepted, order cancelled", order });
   } catch (err) {
     console.error("❌ Error accepting cancellation:", err.message);
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 });
 
