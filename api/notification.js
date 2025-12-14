@@ -85,14 +85,23 @@ router.get("/", async (req, res) => {
  */
 router.get("/:userId", async (req, res) => {
   try {
-    console.log("🔍 Incoming userId param:", req.params.userId);
+    const incoming = req.params.userId;
+    console.log("🔍 Incoming userId param:", incoming);
 
-    const userObjectId = mongoose.Types.ObjectId.createFromHexString(
-      req.params.userId
-    );
-    console.log("🧾 Casted ObjectId:", userObjectId);
+    let userObjectId;
+    try {
+      userObjectId = new mongoose.Types.ObjectId(incoming);
+      console.log("🧾 Casted ObjectId:", userObjectId.toString());
+    } catch (e) {
+      console.warn("⚠️ Could not cast to ObjectId, will try string match");
+    }
 
-    const notifications = await NotificationLog.find({ userId: userObjectId })
+    // Try both ObjectId and string match
+    const query = userObjectId
+      ? { $or: [{ userId: userObjectId }, { userId: incoming }] }
+      : { userId: incoming };
+
+    const notifications = await NotificationLog.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -100,7 +109,7 @@ router.get("/:userId", async (req, res) => {
       "📤 Found notifications:",
       notifications.map((n) => ({
         id: n._id.toString(),
-        userId: n.userId.toString(),
+        userId: n.userId?.toString?.() ?? n.userId,
         message: n.message,
       }))
     );
