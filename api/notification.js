@@ -1,4 +1,5 @@
 import { broadcastEntity } from "../utils/socketBroadcast.js";
+import mongoose from "mongoose";
 import express from "express";
 import NotificationLog from "../models/NotificationLog.js";
 
