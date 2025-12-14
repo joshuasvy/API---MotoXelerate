@@ -1,6 +1,9 @@
-import express from "express";
-import NotificationLog from "../models/NotificationLog.js";
 import { broadcastEntity } from "../utils/socketBroadcast.js";
+import { authToken } from "../middleware/authToken.js";
+import express from "express";
+import Order from "../models/Orders.js";
+import Appointments from "../models/Appointments.js";
+import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 
@@ -56,7 +59,7 @@ router.patch("/:id/read", authToken, async (req, res) => {
 
 router.patch("/:id/read", authToken, async (req, res) => {
   try {
-    const appointment = await Appointment.findByIdAndUpdate(
+    const appointment = await Appointments.findByIdAndUpdate(
       req.params.id,
       { $set: { read: true } },
       { new: true }
