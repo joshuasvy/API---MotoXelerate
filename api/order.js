@@ -526,9 +526,23 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
 
+    console.log("🛠 AcceptCancel route triggered");
+    console.log("Received orderId param:", orderId);
+
     const order = await Order.findById(orderId);
     if (!order) {
+      console.warn(`⚠️ No order found with _id=${orderId}`);
       return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Only allow acceptance if cancellation was requested
+    if (order.cancellationStatus !== "Requested") {
+      console.warn(
+        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
+      );
+      return res.status(400).json({
+        error: "Cancellation must be requested before it can be accepted",
+      });
     }
 
     // Update cancellation fields
@@ -543,6 +557,14 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
 
     await order.save();
 
+    console.log("✅ Cancellation accepted:", {
+      _id: order._id.toString(),
+      cancellationStatus: order.cancellationStatus,
+      cancellationReason: order.cancellationReason,
+      cancelledAt: order.cancelledAt,
+      itemStatuses: order.items.map((i) => i.status),
+    });
+
     // Broadcast updates
     broadcastEntity("order", order.toObject(), "update");
     broadcastEntity(
@@ -556,12 +578,12 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
       "create"
     );
 
+    console.log("📡 Broadcasted order + notification update");
+
     res.json({ message: "Cancellation accepted, order cancelled", order });
   } catch (err) {
     console.error("❌ Error accepting cancellation:", err.message);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
