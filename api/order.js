@@ -154,24 +154,26 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Commit transaction
-    await session.commitTransaction();
-
-    // ✅ Broadcast entities
-    broadcastEntity("order", confirmed.toObject(), "update");
-    broadcastEntity("invoice", newInvoice.toObject(), "update");
-    if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
-
-    // ✅ Create NotificationLog entry
-    const notif = await NotificationLog.create({
+    // ✅ Create NotificationLog entry inside transaction
+    const notif = new NotificationLog({
       userId,
       orderId: confirmed._id,
       type: "order",
       customerName: confirmed.customerName,
       message: `New order from ${confirmed.customerName}`,
     });
+    await notif.save({ session });
+    console.log("📒 NotificationLog created:", notif._id);
 
-    // ✅ Broadcast notification
+    // ✅ Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // ✅ Broadcast entities AFTER commit
+    broadcastEntity("order", confirmed.toObject(), "update");
+    broadcastEntity("invoice", newInvoice.toObject(), "update");
+    if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
+
     broadcastEntity(
       "notification",
       {
