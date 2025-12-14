@@ -116,4 +116,55 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+/**
+ * ✅ Handle cancellation request actions (accept/reject)
+ * POST /api/notifications/:id/action
+ */
+router.post("/:id/action", async (req, res) => {
+  const { action } = req.body; // "accept" or "reject"
+  const { id } = req.params;
+
+  try {
+    const requestNotif = await NotificationLog.findById(id);
+    if (!requestNotif || requestNotif.type !== "CancellationRequest") {
+      return res.status(404).json({ error: "Cancellation request not found" });
+    }
+
+    // ✅ Remove the original request
+    await NotificationLog.deleteOne({ _id: id });
+
+    // ✅ Create a new outcome notification
+    const newNotif = new NotificationLog({
+      userId: requestNotif.userId,
+      orderId: requestNotif.orderId,
+      type:
+        action === "accept" ? "CancellationAccepted" : "CancellationRejected",
+      customerName: requestNotif.customerName,
+      message:
+        action === "accept"
+          ? `Cancellation request accepted for ${requestNotif.customerName}`
+          : `Cancellation request rejected for ${requestNotif.customerName}`,
+    });
+    await newNotif.save();
+
+    // ✅ Broadcast changes with userId included
+    broadcastEntity(
+      "notification",
+      {
+        id,
+        userId: requestNotif.userId?.toString(),
+        action: "delete",
+      },
+      "update"
+    );
+
+    broadcastEntity("notification", newNotif.toObject(), "create");
+
+    res.json({ success: true, notification: newNotif });
+  } catch (err) {
+    console.error("❌ Error handling cancellation:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
