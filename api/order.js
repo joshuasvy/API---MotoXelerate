@@ -1,4 +1,5 @@
 import { broadcastEntity } from "../utils/socketBroadcast.js";
+import { authToken } from "../middleware/authToken.js";
 import mongoose from "mongoose";
 import express from "express";
 import Order from "../models/Orders.js";
@@ -406,6 +407,27 @@ router.put("/:id/payment-status", async (req, res) => {
     res.json(order);
   } catch (err) {
     console.error("❌ Error updating payment status:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id/request-cancel", authToken, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { reason } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    order.cancellationStatus = "Requested";
+    order.cancellationReason = reason;
+    await order.save();
+
+    broadcastEntity("order", order.toObject(), "update");
+
+    res.json({ message: "Cancellation requested", order });
+  } catch (err) {
+    console.error("❌ Error requesting cancellation:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

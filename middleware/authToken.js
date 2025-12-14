@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import Users from "../models/Users.js";
 import Admin from "../models/Admin.js";
 
-
 export const authToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -29,7 +28,6 @@ export const authToken = async (req, res, next) => {
     let account = null;
 
     if (decoded.role === "admin") {
-      // ✅ Trust the JWT for admins
       req.user = { id: decoded.id, role: "admin", name: "Admin" };
       return next();
     } else {
