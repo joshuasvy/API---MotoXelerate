@@ -89,17 +89,39 @@ router.get("/:userId", async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .lean();
+
     console.log(
       "📤 Sending notifications:",
-      notifications.length,
-      notifications
+      notifications.map((n) => ({
+        _id: n._id,
+        readAt: n.readAt,
+      }))
     );
+
     res.json(notifications);
   } catch (err) {
+    console.error("❌ Error fetching notifications:", err.message);
     res
       .status(500)
       .json({ error: "Failed to fetch notifications", details: err.message });
   }
 });
+
+// router.delete("/wipe-all", async (req, res) => {
+//   try {
+//     const result = await NotificationLog.deleteMany({});
+//     console.log("🗑️ Wiped notifications:", result.deletedCount);
+
+//     res.json({
+//       message: "All notifications have been deleted",
+//       deletedCount: result.deletedCount,
+//     });
+//   } catch (err) {
+//     console.error("❌ Error wiping notifications:", err.message);
+//     res
+//       .status(500)
+//       .json({ error: "Failed to wipe notifications", details: err.message });
+//   }
+// });
 
 export default router;
