@@ -32,9 +32,8 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    // Normalize userId once using createFromHexString
-    const userObjectId = mongoose.Types.ObjectId.createFromHexString(userId);
-
+    // ✅ Always resolve user from DB
+    const userObjectId = new mongoose.Types.ObjectId(userId);
     const user = await Users.findById(userObjectId).session(session);
     if (!user) throw new Error(`User not found: ${userId}`);
 
@@ -79,7 +78,7 @@ router.post("/", async (req, res) => {
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
     const newOrder = new Order({
-      userId: userObjectId,
+      userId: user._id, // ✅ always use user._id
       customerName: `${user.firstName} ${user.lastName}`,
       customerEmail: user.email,
       customerPhone: user.contact,
@@ -105,7 +104,7 @@ router.post("/", async (req, res) => {
     )}`;
 
     const newInvoice = new Invoice({
-      user: userObjectId,
+      user: user._id, // ✅ always use user._id
       invoiceNumber,
       sourceType: "Order",
       sourceId: savedOrder._id,
@@ -136,7 +135,7 @@ router.post("/", async (req, res) => {
     }
 
     const updatedCart = await Cart.findOneAndUpdate(
-      { userId: userObjectId },
+      { userId: user._id }, // ✅ always use user._id
       {
         $pull: {
           items: {
@@ -146,7 +145,7 @@ router.post("/", async (req, res) => {
       },
       { new: true, session }
     );
-    console.log("🛒 Cart updated for user:", userId);
+    console.log("🛒 Cart updated for user:", user._id.toString());
 
     const confirmed = await Order.findById(savedOrder._id)
       .session(session)
@@ -157,16 +156,16 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Create NotificationLog entry inside transaction
+    // ✅ NotificationLog entry inside transaction
     const notif = new NotificationLog({
-      userId: userObjectId,
+      userId: user._id, // ✅ always use user._id
       orderId: confirmed._id,
       type: "order",
       customerName: confirmed.customerName,
       message: `New order from ${confirmed.customerName}`,
     });
     await notif.save({ session });
-    console.log("📒 NotificationLog created:", notif._id);
+    console.log("📒 NotificationLog created for user:", user._id.toString());
 
     // ✅ Commit transaction
     await session.commitTransaction();
