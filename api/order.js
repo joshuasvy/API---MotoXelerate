@@ -190,66 +190,53 @@ router.get("/user/:userId", async (req, res) => {
         strictPopulate: false,
       });
 
-    console.log(
-      "🧾 Raw items from DB:",
-      orders.map((o) => o.items)
-    ); // ✅ PASTE HERE
-
     if (!orders || orders.length === 0) {
       console.warn("⚠️ No orders found for user:", userId);
       return res.status(200).json([]);
     }
 
-    const formattedOrders = orders
-      .map((order, orderIndex) => {
-        if (!Array.isArray(order.items)) {
-          console.warn(
-            `⚠️ Order ${order._id} has malformed items array:`,
-            order.items
-          );
-          return null;
-        }
+    const formattedOrders = orders.map((order) => {
+      const formattedItems = (order.items || [])
+        .map((item, itemIndex) => {
+          const product = item.product;
+          if (!product || typeof product !== "object" || !product._id) {
+            console.warn(
+              `⚠️ Order ${order._id} item[${itemIndex}] missing product`,
+              item
+            );
+            return null;
+          }
 
-        const formattedItems = order.items
-          .map((item, itemIndex) => {
-            const product = item.product;
-            if (!product || typeof product !== "object" || !product._id) {
-              console.warn(
-                `⚠️ Order ${order._id} item[${itemIndex}] missing product`,
-                item
-              );
-              return null;
-            }
+          return {
+            productId: product._id,
+            productName: product.productName,
+            specification: product.specification,
+            price: product.price,
+            image: product.image,
+            quantity: item.quantity,
+            status: item.status,
+            read: item.read === false ? false : true,
+          };
+        })
+        .filter(Boolean);
 
-            return {
-              productId: product._id,
-              productName: product.productName,
-              specification: product.specification,
-              price: product.price,
-              image: product.image,
-              quantity: item.quantity,
-              status: item.status,
-              read: item.read === false ? false : true, // ✅ force correct read logic
-            };
-          })
-          .filter(Boolean);
-
-        return {
-          orderId: order._id,
-          customerName: order.customerName,
-          orderDate: order.createdAt,
-          totalOrder: order.totalOrder,
-          paymentStatus: order.payment?.status ?? "N/A",
-          paidAt: order.payment?.paidAt ?? null,
-          deliveryAddress: order.deliveryAddress || "No address provided",
-          notes: order.notes || "",
-          items: formattedItems,
-        };
-      })
-      .filter(Boolean);
+      return {
+        _id: order._id, // ✅ MongoDB ObjectId
+        orderId: order._id.toString(), // ✅ optional alias if you want to keep using "orderId"
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        orderDate: order.createdAt,
+        totalOrder: order.totalOrder,
+        paymentStatus: order.payment?.status ?? "N/A",
+        paidAt: order.payment?.paidAt ?? null,
+        deliveryAddress: order.deliveryAddress || "No address provided",
+        notes: order.notes || "",
+        items: formattedItems,
+      };
+    });
 
     console.log("🧾 Final formattedOrders:", formattedOrders);
-
     res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
