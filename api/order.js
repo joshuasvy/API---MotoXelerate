@@ -157,6 +157,8 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     // ✅ Create NotificationLog entry inside transaction
     const notif = new NotificationLog({
       userId: userObjectId,

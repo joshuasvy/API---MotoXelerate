@@ -87,12 +87,10 @@ router.get("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Defensive check
     if (!mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ error: "Invalid userId" });
     }
 
-    // Let Mongoose cast string → ObjectId automatically
     const notifications = await NotificationLog.find({ userId })
       .sort({ createdAt: -1 })
       .lean();
@@ -101,7 +99,6 @@ router.get("/:userId", async (req, res) => {
       "📤 Sending notifications:",
       notifications.map((n) => n._id)
     );
-
     res.json(notifications);
   } catch (err) {
     console.error("❌ Error fetching notifications:", err.message);
