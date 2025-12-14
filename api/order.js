@@ -453,13 +453,19 @@ router.put("/:id/payment-status", async (req, res) => {
 });
 
 router.put("/:id/request-cancel", authToken, async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const { reason } = req.body;
+  const { id: orderId } = req.params;
+  const { reason } = req.body;
 
-    console.log("🛠 Cancel route triggered");
-    console.log("Received orderId param:", orderId);
-    console.log("Received cancellation reason:", reason);
+  try {
+    console.log("🛠 Request-cancel route triggered");
+    console.log("➡️ orderId:", orderId);
+    console.log("➡️ reason:", reason);
+
+    // Validate input
+    if (!reason || typeof reason !== "string") {
+      console.warn("⚠️ Missing or invalid cancellation reason");
+      return res.status(400).json({ error: "Cancellation reason is required" });
+    }
 
     const order = await Order.findById(orderId);
     if (!order) {
@@ -473,23 +479,51 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       currentCancellationStatus: order.cancellationStatus,
     });
 
+    // Update cancellation fields
     order.cancellationStatus = "Requested";
     order.cancellationReason = reason;
     await order.save();
 
-    console.log("📦 Order after cancellation update:", {
+    console.log("📦 Order updated:", {
       _id: order._id.toString(),
       cancellationStatus: order.cancellationStatus,
       cancellationReason: order.cancellationReason,
     });
 
+    // Create a notification log entry
+    await NotificationLog.create({
+      userId: order.userId,
+      type: "CancellationRequest",
+      orderId: order._id,
+      message: `Cancellation requested by ${order.customerName}`,
+      reason,
+      createdAt: new Date(),
+      readAt: null,
+    });
+
+    console.log("📝 NotificationLog entry created for cancellation request");
+
+    // Broadcast updates
     broadcastEntity("order", order.toObject(), "update");
-    console.log("📡 Broadcasted order update for cancellation request");
+    broadcastEntity(
+      "notification",
+      {
+        type: "CancellationRequest",
+        orderId: order._id.toString(),
+        customerName: order.customerName,
+        reason,
+      },
+      "create"
+    );
+
+    console.log("📡 Broadcasted order + notification update");
 
     res.json({ message: "Cancellation requested", order });
   } catch (err) {
-    console.error("❌ Error requesting cancellation:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error in request-cancel route:", err.message);
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 });
 

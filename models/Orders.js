@@ -54,6 +54,13 @@ const orderSchema = new mongoose.Schema(
       paidAt: { type: Date, default: null },
       method: { type: String, default: "GCash" },
     },
+    cancellationStatus: {
+      type: String,
+      enum: ["None", "Requested", "Accepted", "Rejected"],
+      default: "None",
+    },
+    cancellationReason: { type: String, default: "" },
+    cancelledAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
