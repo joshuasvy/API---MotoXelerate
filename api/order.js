@@ -504,17 +504,20 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
     console.log("📝 NotificationLog entry created for cancellation request");
 
     // Broadcast updates
-    broadcastEntity("order", order.toObject(), "update");
-    broadcastEntity(
-      "notification",
-      {
-        type: "CancellationRequest",
-        orderId: order._id.toString(),
-        customerName: order.customerName,
-        reason,
-      },
-      "create"
-    );
+    if (order.cancellationStatus === "Requested") {
+      broadcastEntity(
+        "notification",
+        {
+          type: "CancellationRequest",
+          orderId: order._id.toString(),
+          customerName: order.customerName,
+          reason: order.cancellationReason,
+        },
+        "create"
+      );
+    } else {
+      broadcastEntity("order", order.toObject(), "update");
+    }
 
     console.log("📡 Broadcasted order + notification update");
 
