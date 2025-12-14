@@ -12,10 +12,13 @@ const router = express.Router();
 router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
   try {
-    const result = await NotificationLog.updateMany(
-      { userId, readAt: null },
-      { $set: { readAt: new Date() } }
-    );
+    const filter = mongoose.isValidObjectId(userId)
+      ? { userId: new mongoose.Types.ObjectId(userId), readAt: null }
+      : { userId, readAt: null };
+
+    const result = await NotificationLog.updateMany(filter, {
+      $set: { readAt: new Date() },
+    });
 
     broadcastEntity(
       "notification",
@@ -49,7 +52,11 @@ router.patch("/:id/read", async (req, res) => {
 
     broadcastEntity(
       "notification",
-      { id: notif._id.toString(), action: "mark-read" },
+      {
+        id: notif._id.toString(),
+        userId: notif.userId?.toString(),
+        action: "mark-read",
+      },
       "update"
     );
 
@@ -63,10 +70,14 @@ router.patch("/:id/read", async (req, res) => {
   }
 });
 
+/**
+ * ✅ Fetch all notifications (Admin mode)
+ * GET /api/notifications
+ */
 router.get("/", async (req, res) => {
   try {
     const notifications = await NotificationLog.find({})
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ createdAt: -1 })
       .lean();
 
     res.json(notifications);
@@ -80,44 +91,23 @@ router.get("/", async (req, res) => {
 });
 
 /**
- * ✅ Fetch notifications for a user
+ * ✅ Fetch notifications for a specific user
  * GET /api/notifications/:userId
  */
-router.get("/:userId?", async (req, res) => {
+router.get("/:userId", async (req, res) => {
   try {
-    const incoming = req.params.userId;
-    console.log("🔍 Incoming userId param:", incoming);
-
+    const { userId } = req.params;
     let query = {};
-    if (incoming) {
-      try {
-        const userObjectId = new mongoose.Types.ObjectId(incoming);
-        console.log("🧾 Casted ObjectId:", userObjectId.toString());
-        query = { userId: userObjectId };
-      } catch (e) {
-        console.warn(
-          "⚠️ Could not cast to ObjectId, falling back to string match"
-        );
-        query = { userId: incoming };
-      }
+
+    if (mongoose.isValidObjectId(userId)) {
+      query = { userId: new mongoose.Types.ObjectId(userId) };
     } else {
-      console.log(
-        "👤 No userId param provided → returning all notifications (Admin mode)"
-      );
+      query = { userId };
     }
 
     const notifications = await NotificationLog.find(query)
       .sort({ createdAt: -1 })
       .lean();
-
-    console.log(
-      "📤 Found notifications:",
-      notifications.map((n) => ({
-        id: n._id.toString(),
-        userId: n.userId?.toString?.() ?? n.userId,
-        message: n.message,
-      }))
-    );
 
     res.json(notifications);
   } catch (err) {
@@ -125,22 +115,5 @@ router.get("/:userId?", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// router.delete("/wipe-all", async (req, res) => {
-//   try {
-//     const result = await NotificationLog.deleteMany({});
-//     console.log("🗑️ Wiped notifications:", result.deletedCount);
-
-//     res.json({
-//       message: "All notifications have been deleted",
-//       deletedCount: result.deletedCount,
-//     });
-//   } catch (err) {
-//     console.error("❌ Error wiping notifications:", err.message);
-//     res
-//       .status(500)
-//       .json({ error: "Failed to wipe notifications", details: err.message });
-//   }
-// });
 
 export default router;
