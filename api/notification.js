@@ -84,26 +84,27 @@ router.get("/", async (req, res) => {
  */
 router.get("/:userId", async (req, res) => {
   try {
-    const notifications = await NotificationLog.find({
-      userId: req.params.userId,
-    })
+    const { userId } = req.params;
+
+    // Defensive check
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: "Invalid userId" });
+    }
+
+    // Let Mongoose cast string → ObjectId automatically
+    const notifications = await NotificationLog.find({ userId })
       .sort({ createdAt: -1 })
       .lean();
 
     console.log(
       "📤 Sending notifications:",
-      notifications.map((n) => ({
-        _id: n._id,
-        readAt: n.readAt,
-      }))
+      notifications.map((n) => n._id)
     );
 
     res.json(notifications);
   } catch (err) {
     console.error("❌ Error fetching notifications:", err.message);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch notifications", details: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 

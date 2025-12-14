@@ -32,7 +32,10 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    const user = await Users.findById(userId).session(session);
+    // Normalize userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const user = await Users.findById(userObjectId).session(session);
     if (!user) throw new Error(`User not found: ${userId}`);
 
     const orderItems = [];
@@ -76,7 +79,7 @@ router.post("/", async (req, res) => {
       paymentMethod?.toLowerCase() === "gcash" ? "GCash" : paymentMethod;
 
     const newOrder = new Order({
-      userId,
+      userId: userObjectId,
       customerName: `${user.firstName} ${user.lastName}`,
       customerEmail: user.email,
       customerPhone: user.contact,
@@ -102,7 +105,7 @@ router.post("/", async (req, res) => {
     )}`;
 
     const newInvoice = new Invoice({
-      user: user._id,
+      user: userObjectId,
       invoiceNumber,
       sourceType: "Order",
       sourceId: savedOrder._id,
@@ -133,7 +136,7 @@ router.post("/", async (req, res) => {
     }
 
     const updatedCart = await Cart.findOneAndUpdate(
-      { userId },
+      { userId: userObjectId },
       {
         $pull: {
           items: {
@@ -154,8 +157,9 @@ router.post("/", async (req, res) => {
         strictPopulate: false,
       });
 
+    // ✅ Create NotificationLog entry inside transaction
     const notif = new NotificationLog({
-      userId,
+      userId: userObjectId,
       orderId: confirmed._id,
       type: "order",
       customerName: confirmed.customerName,
@@ -164,9 +168,12 @@ router.post("/", async (req, res) => {
     await notif.save({ session });
     console.log("📒 NotificationLog created:", notif._id);
 
+    // ✅ Commit transaction
     await session.commitTransaction();
     session.endSession();
+    console.log("✅ Transaction committed for order:", savedOrder._id);
 
+    // ✅ Broadcast AFTER commit
     broadcastEntity("order", confirmed.toObject(), "update");
     broadcastEntity("invoice", newInvoice.toObject(), "update");
     if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
