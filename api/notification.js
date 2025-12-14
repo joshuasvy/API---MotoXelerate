@@ -84,6 +84,7 @@ router.get("/", async (req, res) => {
  * GET /api/notifications/:userId
  */
 router.get("/:userId", async (req, res) => {
+  console.log("🔍 Incoming userId param:", req.params.userId);
   try {
     const { userId } = req.params;
 
