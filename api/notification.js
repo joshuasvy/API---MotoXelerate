@@ -84,24 +84,27 @@ router.get("/", async (req, res) => {
  * GET /api/notifications/:userId
  */
 router.get("/:userId", async (req, res) => {
-  console.log("🔍 Incoming userId param:", req.params.userId);
   try {
-    const { userId } = req.params;
+    console.log("🔍 Incoming userId param:", req.params.userId);
 
-    if (!mongoose.isValidObjectId(userId)) {
-      return res.status(400).json({ error: "Invalid userId" });
-    }
-
-    const userObjectId = mongoose.Types.ObjectId.createFromHexString(userId);
+    const userObjectId = mongoose.Types.ObjectId.createFromHexString(
+      req.params.userId
+    );
+    console.log("🧾 Casted ObjectId:", userObjectId);
 
     const notifications = await NotificationLog.find({ userId: userObjectId })
       .sort({ createdAt: -1 })
       .lean();
 
     console.log(
-      "📤 Sending notifications:",
-      notifications.map((n) => n._id.toString())
+      "📤 Found notifications:",
+      notifications.map((n) => ({
+        id: n._id.toString(),
+        userId: n.userId.toString(),
+        message: n.message,
+      }))
     );
+
     res.json(notifications);
   } catch (err) {
     console.error("❌ Error fetching notifications:", err.message);
