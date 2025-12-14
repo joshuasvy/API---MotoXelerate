@@ -164,11 +164,10 @@ router.post("/", async (req, res) => {
     // ✅ Add NotificationLog entry for new order
     await NotificationLog.create({
       userId,
+      orderId: savedOrder._id,
       type: "order",
-      orderId: confirmed._id,
-      message: `New order from ${confirmed.customerName}`,
-      createdAt: new Date(),
-      readAt: null,
+      customerName: savedOrder.customerName,
+      message: `New order from ${savedOrder.customerName}`,
     });
 
     // ✅ Broadcast notification event
