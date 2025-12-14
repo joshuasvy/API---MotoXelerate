@@ -32,8 +32,8 @@ router.post("/", async (req, res) => {
   session.startTransaction();
 
   try {
-    // Normalize userId once
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    // Normalize userId once using createFromHexString
+    const userObjectId = mongoose.Types.ObjectId.createFromHexString(userId);
 
     const user = await Users.findById(userObjectId).session(session);
     if (!user) throw new Error(`User not found: ${userId}`);

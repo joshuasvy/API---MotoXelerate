@@ -91,7 +91,7 @@ router.get("/:userId", async (req, res) => {
       return res.status(400).json({ error: "Invalid userId" });
     }
 
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const userObjectId = mongoose.Types.ObjectId.createFromHexString(userId);
 
     const notifications = await NotificationLog.find({ userId: userObjectId })
       .sort({ createdAt: -1 })
@@ -107,7 +107,6 @@ router.get("/:userId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // router.delete("/wipe-all", async (req, res) => {
 //   try {
