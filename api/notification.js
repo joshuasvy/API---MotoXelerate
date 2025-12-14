@@ -62,6 +62,22 @@ router.patch("/:id/read", async (req, res) => {
   }
 });
 
+router.get("/", async (req, res) => {
+  try {
+    const notifications = await NotificationLog.find({})
+      .sort({ createdAt: -1 }) // newest first
+      .lean();
+
+    res.json(notifications);
+  } catch (err) {
+    console.error("❌ Failed to fetch all notifications:", err.message);
+    res.status(500).json({
+      error: "Failed to fetch notifications",
+      details: err.message,
+    });
+  }
+});
+
 /**
  * ✅ Fetch notifications for a user
  * GET /api/notifications/:userId
@@ -71,16 +87,13 @@ router.get("/:userId", async (req, res) => {
     const notifications = await NotificationLog.find({
       userId: req.params.userId,
     })
-      .sort({ createdAt: -1 }) // newest first
-      .lean(); // plain JS objects
-
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(notifications);
   } catch (err) {
-    console.error("❌ Failed to fetch notifications:", err.message);
-    res.status(500).json({
-      error: "Failed to fetch notifications",
-      details: err.message,
-    });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch notifications", details: err.message });
   }
 });
 

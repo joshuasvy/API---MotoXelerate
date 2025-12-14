@@ -26,10 +26,9 @@ const NotificationLogSchema = new mongoose.Schema(
     status: { type: String },
     readAt: { type: Date, default: null },
   },
-  { timestamps: true } // adds createdAt and updatedAt automatically
+  { timestamps: true }
 );
 
-// Optional: prevent duplicate logs for same user/order
 NotificationLogSchema.index({ userId: 1, orderId: 1 }, { unique: false });
 
 export default mongoose.model("NotificationLog", NotificationLogSchema);
