@@ -157,10 +157,31 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ Broadcast order + invoice + cart
     broadcastEntity("order", confirmed.toObject(), "update");
     broadcastEntity("invoice", newInvoice.toObject(), "update");
     if (updatedCart) broadcastEntity("cart", updatedCart.toObject(), "update");
+
+    // ✅ Add NotificationLog entry for new order
+    await NotificationLog.create({
+      userId,
+      type: "order",
+      orderId: confirmed._id,
+      message: `New order from ${confirmed.customerName}`,
+      createdAt: new Date(),
+      readAt: null,
+    });
+
+    // ✅ Broadcast notification event
+    broadcastEntity(
+      "notification",
+      {
+        type: "order",
+        orderId: confirmed._id.toString(),
+        customerName: confirmed.customerName,
+        message: `New order from ${confirmed.customerName}`,
+      },
+      "create"
+    );
 
     res.status(201).json({ order: confirmed, invoice: newInvoice });
   } catch (err) {
