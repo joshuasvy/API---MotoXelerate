@@ -176,9 +176,9 @@ router.get("/me", authToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const invoices = await Invoice.find({ sourceId: userId })
+    const invoices = await Invoice.find({ user: userId })
       .sort({ createdAt: -1 })
-      .populate("sourceId");
+      .populate("sourceId"); // still useful if you want order/appointment details
 
     res.json(invoices);
   } catch (err) {
