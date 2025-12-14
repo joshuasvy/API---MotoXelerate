@@ -158,7 +158,7 @@ router.post("/", async (req, res) => {
 
     // ✅ NotificationLog entry inside transaction
     const notif = new NotificationLog({
-      userId: user._id, // ✅ always use user._id
+      userId: user._id,
       orderId: confirmed._id,
       type: "order",
       customerName: confirmed.customerName,
@@ -186,6 +186,7 @@ router.post("/", async (req, res) => {
         type: "order",
         message: notif.message,
         createdAt: notif.createdAt,
+        userId: user._id.toString(),
       },
       "create"
     );

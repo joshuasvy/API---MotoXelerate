@@ -83,23 +83,28 @@ router.get("/", async (req, res) => {
  * ✅ Fetch notifications for a user
  * GET /api/notifications/:userId
  */
-router.get("/:userId", async (req, res) => {
+router.get("/:userId?", async (req, res) => {
   try {
     const incoming = req.params.userId;
     console.log("🔍 Incoming userId param:", incoming);
 
-    let userObjectId;
-    try {
-      userObjectId = new mongoose.Types.ObjectId(incoming);
-      console.log("🧾 Casted ObjectId:", userObjectId.toString());
-    } catch (e) {
-      console.warn("⚠️ Could not cast to ObjectId, will try string match");
+    let query = {};
+    if (incoming) {
+      try {
+        const userObjectId = new mongoose.Types.ObjectId(incoming);
+        console.log("🧾 Casted ObjectId:", userObjectId.toString());
+        query = { userId: userObjectId };
+      } catch (e) {
+        console.warn(
+          "⚠️ Could not cast to ObjectId, falling back to string match"
+        );
+        query = { userId: incoming };
+      }
+    } else {
+      console.log(
+        "👤 No userId param provided → returning all notifications (Admin mode)"
+      );
     }
-
-    // Try both ObjectId and string match
-    const query = userObjectId
-      ? { $or: [{ userId: userObjectId }, { userId: incoming }] }
-      : { userId: incoming };
 
     const notifications = await NotificationLog.find(query)
       .sort({ createdAt: -1 })
