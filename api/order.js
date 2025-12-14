@@ -403,14 +403,34 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
     const orderId = req.params.id;
     const { reason } = req.body;
 
+    console.log("🛠 Cancel route triggered");
+    console.log("Received orderId param:", orderId);
+    console.log("Received cancellation reason:", reason);
+
     const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      console.warn(`⚠️ No order found with _id=${orderId}`);
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    console.log("✅ Order found:", {
+      _id: order._id.toString(),
+      customerName: order.customerName,
+      currentCancellationStatus: order.cancellationStatus,
+    });
 
     order.cancellationStatus = "Requested";
     order.cancellationReason = reason;
     await order.save();
 
+    console.log("📦 Order after cancellation update:", {
+      _id: order._id.toString(),
+      cancellationStatus: order.cancellationStatus,
+      cancellationReason: order.cancellationReason,
+    });
+
     broadcastEntity("order", order.toObject(), "update");
+    console.log("📡 Broadcasted order update for cancellation request");
 
     res.json({ message: "Cancellation requested", order });
   } catch (err) {
