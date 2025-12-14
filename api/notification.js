@@ -125,13 +125,17 @@ router.post("/:id/action", async (req, res) => {
   const { id } = req.params;
 
   try {
+    console.log("➡️ Cancellation action route hit:", { id, action });
+
     const requestNotif = await NotificationLog.findById(id);
     if (!requestNotif || requestNotif.type !== "CancellationRequest") {
+      console.warn("⚠️ Cancellation request not found or invalid type:", id);
       return res.status(404).json({ error: "Cancellation request not found" });
     }
 
     // ✅ Remove the original request
     await NotificationLog.deleteOne({ _id: id });
+    console.log("🗑️ Removed original CancellationRequest notification:", id);
 
     // ✅ Create a new outcome notification
     const newNotif = new NotificationLog({
@@ -146,8 +150,12 @@ router.post("/:id/action", async (req, res) => {
           : `Cancellation request rejected for ${requestNotif.customerName}`,
     });
     await newNotif.save();
+    console.log(
+      "✅ Created new outcome notification:",
+      newNotif._id.toString()
+    );
 
-    // ✅ Broadcast changes with userId included
+    // ✅ Broadcast changes
     broadcastEntity(
       "notification",
       {
@@ -157,8 +165,8 @@ router.post("/:id/action", async (req, res) => {
       },
       "update"
     );
-
     broadcastEntity("notification", newNotif.toObject(), "create");
+    console.log("📢 Broadcasted delete + create events");
 
     res.json({ success: true, notification: newNotif });
   } catch (err) {
