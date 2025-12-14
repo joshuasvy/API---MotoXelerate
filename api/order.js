@@ -565,8 +565,6 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
       itemStatuses: order.items.map((i) => i.status),
     });
 
-    // Broadcast updates
-    broadcastEntity("order", order.toObject(), "update");
     broadcastEntity(
       "notification",
       {
