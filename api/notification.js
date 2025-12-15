@@ -36,6 +36,29 @@ router.put("/:userId/mark-read", async (req, res) => {
   }
 });
 
+// Mark ALL notifications in the system as read (admin only)
+router.put("/mark-read", async (req, res) => {
+  try {
+    // Update every notification that is still unread
+    const result = await NotificationLog.updateMany(
+      { readAt: null },
+      { $set: { readAt: new Date() } }
+    );
+
+    // Broadcast a global mark-read event
+    broadcastEntity(
+      "notification",
+      { markedCount: result.modifiedCount, action: "mark-read" },
+      "update"
+    );
+
+    return res.json({ success: true, marked: result.modifiedCount });
+  } catch (err) {
+    console.error("❌ Failed to mark all notifications:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 /**
  * ✅ Mark a single notification as read
  * PATCH /api/notifications/:id/read
