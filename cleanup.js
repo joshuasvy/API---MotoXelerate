@@ -1,30 +1,41 @@
+// scripts/fixPaymentIndex.js
 import mongoose from "mongoose";
-import NotificationLog from "./models/NotificationLog.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-async function migrateUserIds() {
-  await mongoose.connect(process.env.MONGO_URI);
-  console.log("✅ Connected to MongoDB Atlas");
+async function run() {
+  try {
+    // 1. Connect to your MongoDB
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ Connected to MongoDB");
 
-  const cursor = NotificationLog.find({ userId: { $type: "string" } }).cursor();
+    const db = mongoose.connection.db;
 
-  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
+    // 2. Drop the old index if it exists
     try {
-      const objectId = new mongoose.Types.ObjectId(doc.userId);
-      await NotificationLog.updateOne(
-        { _id: doc._id },
-        { $set: { userId: objectId } }
-      );
-      console.log(`✅ Converted userId for notification ${doc._id}`);
+      await db.collection("appointments").dropIndex("payment.referenceId_1");
+      console.log("🗑️ Dropped old unique index on payment.referenceId");
     } catch (err) {
-      console.error(`❌ Failed to convert ${doc._id}:`, err.message);
+      console.warn("⚠️ No existing index to drop:", err.message);
     }
-  }
 
-  await mongoose.disconnect();
-  console.log("🔒 Migration complete, disconnected from MongoDB");
+    // 3. Recreate as partial unique index (only enforce when field exists)
+    await db.collection("appointments").createIndex(
+      { "payment.referenceId": 1 },
+      {
+        unique: true,
+        partialFilterExpression: { "payment.referenceId": { $exists: true } },
+      }
+    );
+    console.log("✅ Created partial unique index on payment.referenceId");
+
+    await mongoose.disconnect();
+    console.log("🔌 Disconnected from MongoDB");
+  } catch (err) {
+    console.error("❌ Migration failed:", err);
+    process.exit(1);
+  }
 }
 
-migrateUserIds();
+run();
