@@ -136,23 +136,55 @@ router.get("/:userId/notifications", async (req, res) => {
   }
 
   try {
-    console.log(`[INFO] Fetching notifications for userId: ${userId}`);
+    console.log(
+      `[INFO] Fetching notifications (orders + appointments) for userId: ${userId}`
+    );
 
-    const notifications = await NotificationLog.find({ userId })
-      .sort({ createdAt: -1 })
-      .select(
-        "_id type orderId appointmentId customerName message reason createdAt readAt"
-      );
+    // Fetch orders
+    const orders = await Orders.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("_id updatedAt items")
+      .populate({
+        path: "items.product",
+        select: "_id productName image",
+      });
 
-    if (!notifications || notifications.length === 0) {
+    // Fetch appointments
+    const appointments = await Appointments.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("_id updatedAt items")
+      .populate({
+        path: "items.service",
+        select: "_id serviceName image",
+      });
+
+    // Normalize appointments to look like orders for frontend
+    const normalizedAppointments = appointments.map((appt) => ({
+      _id: appt._id,
+      updatedAt: appt.updatedAt,
+      items: appt.items.map((item) => ({
+        status: item.status,
+        product: {
+          _id: item.service?._id,
+          productName: item.service?.serviceName,
+          image: item.service?.image,
+        },
+      })),
+    }));
+
+    const combined = [...orders, ...normalizedAppointments].sort(
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    if (combined.length === 0) {
       console.log(`[INFO] No notifications found for userId: ${userId}`);
       return res.status(200).json([]);
     }
 
     console.log(
-      `[INFO] Found ${notifications.length} notifications for userId: ${userId}`
+      `[INFO] Found ${combined.length} notifications for userId: ${userId}`
     );
-    res.json(notifications);
+    res.json(combined);
   } catch (err) {
     console.error(
       `[ERROR] Failed to fetch notifications for userId: ${userId}`,
