@@ -543,56 +543,48 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
     const orderId = req.params.id;
 
     console.log("🛠 AcceptCancel route triggered");
-    console.log("Received orderId param:", orderId);
 
     const order = await Order.findById(orderId);
     if (!order) {
-      console.warn(`⚠️ No order found with _id=${orderId}`);
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Only allow acceptance if cancellation was requested
     if (order.cancellationStatus !== "Requested") {
-      console.warn(
-        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
-      );
       return res.status(400).json({
         error: "Cancellation must be requested before it can be accepted",
       });
     }
 
-    // Update cancellation fields
+    // Update order fields
     order.cancellationStatus = "Accepted";
     order.cancelledAt = new Date();
-
-    // Update all item statuses to Cancelled
-    order.items = order.items.map((item) => {
-      item.status = "Cancelled";
-      return item;
-    });
-
+    order.items = order.items.map((item) => ({ ...item, status: "Cancelled" }));
     await order.save();
 
-    console.log("✅ Cancellation accepted:", {
-      _id: order._id.toString(),
-      cancellationStatus: order.cancellationStatus,
-      cancellationReason: order.cancellationReason,
-      cancelledAt: order.cancelledAt,
-      itemStatuses: order.items.map((i) => i.status),
+    // 🗑️ Remove original CancellationRequest notification
+    await NotificationLog.deleteOne({
+      orderId: order._id,
+      type: "CancellationRequest",
     });
 
+    // 📝 Create new CancellationAccepted notification
+    const notif = await NotificationLog.create({
+      userId: order.userId,
+      type: "CancellationAccepted",
+      orderId: order._id,
+      customerName: order.customerName,
+      message: `Cancellation accepted for ${order.customerName}`,
+      createdAt: new Date(),
+      readAt: null,
+    });
+
+    // 📡 Broadcast delete + create
     broadcastEntity(
       "notification",
-      {
-        type: "CancellationAccepted",
-        orderId: order._id.toString(),
-        customerName: order.customerName,
-        message: `Cancellation accepted for ${order.customerName}`,
-      },
-      "create"
+      { orderId: order._id.toString(), action: "delete" },
+      "update"
     );
-
-    console.log("📡 Broadcasted order + notification update");
+    broadcastEntity("notification", notif.toObject(), "create");
 
     res.json({ message: "Cancellation accepted, order cancelled", order });
   } catch (err) {
@@ -606,35 +598,29 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
     const orderId = req.params.id;
 
     console.log("🛠 RejectCancel route triggered");
-    console.log("Received orderId param:", orderId);
 
     const order = await Order.findById(orderId);
     if (!order) {
-      console.warn(`⚠️ No order found with _id=${orderId}`);
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Only allow rejection if cancellation was requested
     if (order.cancellationStatus !== "Requested") {
-      console.warn(
-        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
-      );
       return res.status(400).json({
         error: "Cancellation must be requested before it can be rejected",
       });
     }
 
-    // Update cancellation fields
+    // Update order fields
     order.cancellationStatus = "Rejected";
     await order.save();
 
-    console.log("✅ Cancellation rejected:", {
-      _id: order._id.toString(),
-      cancellationStatus: order.cancellationStatus,
-      cancellationReason: order.cancellationReason,
+    // 🗑️ Remove original CancellationRequest notification
+    await NotificationLog.deleteOne({
+      orderId: order._id,
+      type: "CancellationRequest",
     });
 
-    // ✅ Persist notification in DB
+    // 📝 Create new CancellationRejected notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRejected",
@@ -645,12 +631,13 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
       readAt: null,
     });
 
-    console.log("📝 NotificationLog entry created for cancellation rejection");
-
-    // ✅ Broadcast persisted notification
+    // 📡 Broadcast delete + create
+    broadcastEntity(
+      "notification",
+      { orderId: order._id.toString(), action: "delete" },
+      "update"
+    );
     broadcastEntity("notification", notif.toObject(), "create");
-
-    console.log("📡 Broadcasted order + notification update");
 
     res.json({ message: "Cancellation rejected, order remains active", order });
   } catch (err) {
