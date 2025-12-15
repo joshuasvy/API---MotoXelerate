@@ -96,21 +96,23 @@ router.get("/", async (req, res) => {
       type: {
         $in: [
           "order",
-          "appointment",
           "CancellationRequest",
           "CancellationAccepted",
           "CancellationRejected",
+          "AppointmentCreatedAdmin", // ✅ include appointment booking logs for admin
         ],
       },
     })
       .sort({ createdAt: -1 })
       .lean();
+
     res.json(notifications);
   } catch (err) {
     console.error("❌ Failed to fetch admin notifications:", err.message);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch notifications", details: err.message });
+    res.status(500).json({
+      error: "Failed to fetch notifications",
+      details: err.message,
+    });
   }
 });
 

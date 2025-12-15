@@ -75,6 +75,20 @@ router.post("/", authToken, async (req, res) => {
       newAppointment._id
     );
 
+    // ✅ Create NotificationLog entry (admin-facing)
+    await NotificationLog.create({
+      appointmentId: newAppointment._id,
+      type: "AppointmentCreatedAdmin", // admin-facing type
+      customerName: fullName,
+      message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
+      status: newAppointment.status,
+    });
+
+    console.log(
+      "📢 Admin notification logged for appointment:",
+      newAppointment._id
+    );
+
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
       Math.random() * 10000
@@ -122,7 +136,6 @@ router.post("/", authToken, async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 router.get("/all", authToken, async (req, res) => {
   if (req.user.role !== "admin") {
@@ -236,8 +249,9 @@ router.put("/:id", authToken, async (req, res) => {
       return res.status(404).json({ message: "Appointment not found" });
     }
 
-    // ✅ If status was updated, log a notification for the USER
+    // ✅ If status was updated, log notifications
     if (updates.status) {
+      // --- User-facing notification ---
       await NotificationLog.create({
         userId: updated.userId, // belongs to the user
         appointmentId: updated._id,
@@ -249,6 +263,19 @@ router.put("/:id", authToken, async (req, res) => {
 
       console.log(
         `🔔 User notification logged for appointment ${updated._id} status: ${updates.status}`
+      );
+
+      // --- Admin-facing notification ---
+      await NotificationLog.create({
+        appointmentId: updated._id,
+        type: "AppointmentStatusAdmin", // admin-facing type
+        customerName: updated.customer_Name,
+        message: `${updated.customer_Name}'s appointment for ${updated.service_Type} has been ${updates.status}.`,
+        status: updates.status,
+      });
+
+      console.log(
+        `📢 Admin notification logged for appointment ${updated._id} status: ${updates.status}`
       );
 
       // ✅ Broadcast to user side only
