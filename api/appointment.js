@@ -56,14 +56,14 @@ router.post("/", authToken, async (req, res) => {
     await newAppointment.save();
     console.log("📦 Saved appointment:", newAppointment);
 
-    // ✅ Broadcast for real-time updates
+    // ✅ Broadcast for real-time updates (appointment state)
     broadcastEntity("appointment", newAppointment, "update");
     console.log("📡 Broadcasting appointment:", newAppointment.status);
 
     // ✅ Create NotificationLog entry (admin-facing only)
-    await NotificationLog.create({
+    const notif = await NotificationLog.create({
       appointmentId: newAppointment._id,
-      type: "appointment",
+      type: "appointment", // unified single value
       customerName: fullName,
       message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
       status: newAppointment.status,
@@ -73,6 +73,9 @@ router.post("/", authToken, async (req, res) => {
       "📢 Admin notification logged for appointment:",
       newAppointment._id
     );
+
+    // ✅ Broadcast notification so frontend receives it
+    broadcastEntity("notification", notif, "create");
 
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
@@ -232,6 +235,24 @@ router.put("/:id", authToken, async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // ✅ If status was updated, log and broadcast a notification
+    if (updates.status) {
+      const notif = await NotificationLog.create({
+        appointmentId: updated._id,
+        type: "appointment", // unified single value
+        customerName: updated.customer_Name,
+        message: `${updated.customer_Name}'s appointment for ${updated.service_Type} has been ${updates.status}.`,
+        status: updates.status,
+      });
+
+      console.log(
+        `📢 Admin notification logged for appointment ${updated._id} status: ${updates.status}`
+      );
+
+      // Broadcast notification so frontend receives it
+      broadcastEntity("notification", notif, "create");
     }
 
     return res
