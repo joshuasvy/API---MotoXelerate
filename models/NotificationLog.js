@@ -5,7 +5,16 @@ const NotificationLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // Only required for user-facing notifications
+      required: function () {
+        return [
+          "order",
+          "appointment",
+          "CancellationRequest",
+          "CancellationAccepted",
+          "CancellationRejected",
+        ].includes(this.type);
+      },
     },
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
     appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment" },
@@ -17,6 +26,8 @@ const NotificationLogSchema = new mongoose.Schema(
         "CancellationRequest",
         "CancellationAccepted",
         "CancellationRejected",
+        "AppointmentCreatedAdmin", // ✅ new admin type
+        "AppointmentStatusAdmin", // ✅ new admin type
       ],
       required: true,
     },
@@ -29,6 +40,7 @@ const NotificationLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Index still fine
 NotificationLogSchema.index({ userId: 1, orderId: 1 }, { unique: false });
 
 export default mongoose.model("NotificationLog", NotificationLogSchema);

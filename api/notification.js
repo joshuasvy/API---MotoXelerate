@@ -99,7 +99,8 @@ router.get("/", async (req, res) => {
           "CancellationRequest",
           "CancellationAccepted",
           "CancellationRejected",
-          "AppointmentCreatedAdmin", // ✅ include appointment booking logs for admin
+          "AppointmentCreatedAdmin",
+          "AppointmentStatusAdmin",
         ],
       },
     })
