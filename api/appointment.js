@@ -11,6 +11,9 @@ const router = express.Router();
 router.post("/", authToken, async (req, res) => {
   console.log("📥 Incoming appointment payload:", req.body);
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { date, time, service_Type, service_Charge } = req.body;
     const userId = req.user.id;
@@ -19,8 +22,8 @@ router.post("/", authToken, async (req, res) => {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-    const user = await Users.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
+    const user = await Users.findById(userId).session(session);
+    if (!user) throw new Error(`User not found: ${userId}`);
 
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const downpaymentAmount = Math.round(Number(service_Charge) * 0.5);
@@ -32,7 +35,7 @@ router.post("/", authToken, async (req, res) => {
 
     // ✅ Create Appointment
     const newAppointment = new Appointments({
-      userId,
+      userId: user._id, // always use user._id
       customer_Name: fullName,
       customerEmail: user.email,
       customerPhone: user.contact,
@@ -53,29 +56,8 @@ router.post("/", authToken, async (req, res) => {
       },
     });
 
-    await newAppointment.save();
-    console.log("📦 Saved appointment:", newAppointment);
-
-    // ✅ Broadcast for real-time updates (appointment state)
-    broadcastEntity("appointment", newAppointment, "update");
-    console.log("📡 Broadcasting appointment:", newAppointment.status);
-
-    // ✅ Create NotificationLog entry (admin-facing only)
-    const notif = await NotificationLog.create({
-      appointmentId: newAppointment._id,
-      type: "appointment", // unified single value
-      customerName: fullName,
-      message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
-      status: newAppointment.status,
-    });
-
-    console.log(
-      "📢 Admin notification logged for appointment:",
-      newAppointment._id
-    );
-
-    // ✅ Broadcast notification so frontend receives it
-    broadcastEntity("notification", notif, "create");
+    const savedAppointment = await newAppointment.save({ session });
+    console.log("📦 Saved appointment:", savedAppointment);
 
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
@@ -86,13 +68,13 @@ router.post("/", authToken, async (req, res) => {
       user: user._id,
       invoiceNumber,
       sourceType: "Appointment",
-      sourceId: newAppointment._id,
+      sourceId: savedAppointment._id,
       customerName: fullName,
       customerEmail: user.email,
       customerPhone: user.contact,
       paymentMethod: "GCash",
       paymentStatus: "Pending",
-      referenceId: newAppointment.payment.referenceId,
+      referenceId: savedAppointment.payment.referenceId,
       items: [
         {
           description: service_Type,
@@ -104,7 +86,7 @@ router.post("/", authToken, async (req, res) => {
       subtotal: Number(service_Charge),
       total: Number(service_Charge),
       status: "Unpaid",
-      appointmentId: newAppointment._id,
+      appointmentId: savedAppointment._id,
       serviceType: service_Type,
       mechanic: "",
       date: parsedDate,
@@ -112,15 +94,57 @@ router.post("/", authToken, async (req, res) => {
       appointmentStatus: "Pending",
     });
 
-    await newInvoice.save();
+    await newInvoice.save({ session });
+
+    // ✅ NotificationLog entry inside transaction
+    const notif = new NotificationLog({
+      appointmentId: savedAppointment._id,
+      type: "appointment",
+      customerName: fullName,
+      message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
+      status: savedAppointment.status,
+    });
+    await notif.save({ session });
+    console.log(
+      "📒 NotificationLog created for appointment:",
+      savedAppointment._id
+    );
+
+    // ✅ Commit transaction
+    await session.commitTransaction();
+    await session.endSession();
+    console.log(
+      "✅ Transaction committed for appointment:",
+      savedAppointment._id
+    );
+
+    // ✅ Broadcast AFTER commit
+    broadcastEntity("appointment", savedAppointment.toObject(), "update");
+    broadcastEntity("invoice", newInvoice.toObject(), "update");
+
+    broadcastEntity(
+      "notification",
+      {
+        _id: notif._id.toString(),
+        appointmentId: savedAppointment._id.toString(),
+        customerName: fullName,
+        type: "appointment",
+        message: notif.message,
+        createdAt: notif.createdAt,
+      },
+      "create"
+    );
 
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
-      appointment: newAppointment,
+      appointment: savedAppointment,
       invoice: newInvoice,
+      notification: notif,
     });
   } catch (err) {
-    console.error("❌ Booking error:", err);
+    if (session.inTransaction()) await session.abortTransaction();
+    await session.endSession();
+    console.error("❌ Booking error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
