@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const toProperCase = (str = "") =>
   str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -24,7 +25,7 @@ const appointmentSchema = new mongoose.Schema(
     },
     read: { type: Boolean, default: false },
     payment: {
-      referenceId: { type: String, default: null }, // ✅ no unique here
+      referenceId: { type: String, default: null },
       chargeId: { type: String, default: null },
       amount: { type: Number, required: true },
       status: {
@@ -37,15 +38,6 @@ const appointmentSchema = new mongoose.Schema(
     },
   },
   { timestamps: true }
-);
-
-// ✅ Partial unique index: enforce uniqueness only when referenceId exists
-appointmentSchema.index(
-  { "payment.referenceId": 1 },
-  {
-    unique: true,
-    partialFilterExpression: { "payment.referenceId": { $exists: true } },
-  }
 );
 
 appointmentSchema.pre("save", function (next) {

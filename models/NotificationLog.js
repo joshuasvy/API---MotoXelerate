@@ -22,12 +22,10 @@ const NotificationLogSchema = new mongoose.Schema(
       type: String,
       enum: [
         "order",
-        "appointment",
+        "appointment", // ✅ single value for all appointment notifications
         "CancellationRequest",
         "CancellationAccepted",
         "CancellationRejected",
-        "AppointmentCreatedAdmin", // ✅ new admin type
-        "AppointmentStatusAdmin", // ✅ new admin type
       ],
       required: true,
     },

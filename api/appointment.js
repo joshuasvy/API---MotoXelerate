@@ -60,25 +60,10 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", newAppointment, "update");
     console.log("📡 Broadcasting appointment:", newAppointment.status);
 
-    // ✅ Create NotificationLog entry (user-facing)
-    await NotificationLog.create({
-      userId: newAppointment.userId, // belongs to the user
-      appointmentId: newAppointment._id,
-      type: "appointment", // user-facing type
-      customerName: fullName,
-      message: `Your appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time} has been booked.`,
-      status: newAppointment.status,
-    });
-
-    console.log(
-      "🔔 User notification logged for appointment:",
-      newAppointment._id
-    );
-
-    // ✅ Create NotificationLog entry (admin-facing)
+    // ✅ Create NotificationLog entry (admin-facing only)
     await NotificationLog.create({
       appointmentId: newAppointment._id,
-      type: "AppointmentCreatedAdmin", // admin-facing type
+      type: "appointment",
       customerName: fullName,
       message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
       status: newAppointment.status,
@@ -247,48 +232,6 @@ router.put("/:id", authToken, async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ message: "Appointment not found" });
-    }
-
-    // ✅ If status was updated, log notifications
-    if (updates.status) {
-      // --- User-facing notification ---
-      await NotificationLog.create({
-        userId: updated.userId, // belongs to the user
-        appointmentId: updated._id,
-        type: "appointment", // user-facing type
-        customerName: updated.customer_Name,
-        message: `Your appointment for ${updated.service_Type} has been ${updates.status}.`,
-        status: updates.status,
-      });
-
-      console.log(
-        `🔔 User notification logged for appointment ${updated._id} status: ${updates.status}`
-      );
-
-      // --- Admin-facing notification ---
-      await NotificationLog.create({
-        appointmentId: updated._id,
-        type: "AppointmentStatusAdmin", // admin-facing type
-        customerName: updated.customer_Name,
-        message: `${updated.customer_Name}'s appointment for ${updated.service_Type} has been ${updates.status}.`,
-        status: updates.status,
-      });
-
-      console.log(
-        `📢 Admin notification logged for appointment ${updated._id} status: ${updates.status}`
-      );
-
-      // ✅ Broadcast to user side only
-      broadcastEntity(
-        "notification",
-        {
-          userId: updated.userId,
-          appointmentId: updated._id,
-          status: updates.status,
-          action: "update",
-        },
-        "create"
-      );
     }
 
     return res
