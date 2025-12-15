@@ -125,7 +125,7 @@ router.post("/", authToken, async (req, res) => {
 
     // 🔎 Normalize notification payload for frontend
     const notifPayload = {
-      id: notif._id.toString(), // use id
+      id: notif._id.toString(),
       orderId: notif.orderId ?? null,
       appointmentId: notif.appointmentId?.toString() ?? null,
       customerName: notif.customerName ?? "",
@@ -134,9 +134,8 @@ router.post("/", authToken, async (req, res) => {
       reason: notif.reason ?? "",
       status: notif.status ?? "",
       createdAt: notif.createdAt,
-      read: Boolean(notif.readAt), // convert readAt to boolean
+      read: false,
     };
-
     broadcastEntity("notification", notifPayload, "create");
 
     return res.status(201).json({
