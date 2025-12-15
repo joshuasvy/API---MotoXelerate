@@ -134,7 +134,7 @@ router.post("/", authToken, async (req, res) => {
       reason: notif.reason ?? "",
       status: notif.status ?? "",
       createdAt: notif.createdAt,
-      read: false,
+      readAt: notif.readAt ?? null,
     };
     broadcastEntity("notification", notifPayload, "create");
 
