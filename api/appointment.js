@@ -60,16 +60,20 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", newAppointment, "update");
     console.log("📡 Broadcasting appointment:", newAppointment.status);
 
-    // ✅ Create NotificationLog entry
+    // ✅ Create NotificationLog entry (user-facing)
     await NotificationLog.create({
-      userId,
+      userId: newAppointment.userId, // belongs to the user
       appointmentId: newAppointment._id,
-      type: "appointment",
+      type: "appointment", // user-facing type
       customerName: fullName,
       message: `Your appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time} has been booked.`,
       status: newAppointment.status,
     });
-    console.log("🔔 Notification logged for appointment:", newAppointment._id);
+
+    console.log(
+      "🔔 User notification logged for appointment:",
+      newAppointment._id
+    );
 
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
@@ -118,6 +122,7 @@ router.post("/", authToken, async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
+
 
 router.get("/all", authToken, async (req, res) => {
   if (req.user.role !== "admin") {
