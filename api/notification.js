@@ -136,7 +136,7 @@ router.get("/:userId/notifications", async (req, res) => {
     return res.status(400).json({ error: "Invalid user ID" });
   }
   try {
-    console.log(`[INFO] Fetching notifications for userId: ${userId}`);
+    console.log(`[INFO] Fetching all notifications for userId: ${userId}`);
     const notifications = await NotificationLog.find({ userId })
       .sort({ createdAt: -1 })
       .select(

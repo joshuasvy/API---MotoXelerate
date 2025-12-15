@@ -4,6 +4,7 @@ import express from "express";
 import Invoice from "../models/Invoice.js";
 import Appointments from "../models/Appointments.js";
 import Users from "../models/Users.js";
+import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 
@@ -59,13 +60,24 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", newAppointment, "update");
     console.log("📡 Broadcasting appointment:", newAppointment.status);
 
+    // ✅ Create NotificationLog entry
+    await NotificationLog.create({
+      userId,
+      appointmentId: newAppointment._id,
+      type: "appointment",
+      customerName: fullName,
+      message: `Your appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time} has been booked.`,
+      status: newAppointment.status,
+    });
+    console.log("🔔 Notification logged for appointment:", newAppointment._id);
+
     // ✅ Create Invoice linked to Appointment
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
       Math.random() * 10000
     )}`;
 
     const newInvoice = new Invoice({
-      user: user._id, // safer than req.user.id
+      user: user._id,
       invoiceNumber,
       sourceType: "Appointment",
       sourceId: newAppointment._id,
@@ -205,6 +217,7 @@ router.get("/:id", authToken, async (req, res) => {
   }
 });
 
+// Handles status update for appointments
 router.put("/:id", authToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -216,6 +229,34 @@ router.put("/:id", authToken, async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // ✅ If status was updated, log a notification
+    if (updates.status) {
+      await NotificationLog.create({
+        userId: updated.userId,
+        appointmentId: updated._id,
+        type: "appointment",
+        customerName: updated.customer_Name,
+        message: `Your appointment for ${updated.service_Type} has been ${updates.status}.`,
+        status: updates.status,
+      });
+
+      console.log(
+        `🔔 Notification logged for appointment ${updated._id} status: ${updates.status}`
+      );
+
+      // Optional: broadcast in real-time
+      broadcastEntity(
+        "notification",
+        {
+          userId: updated.userId,
+          appointmentId: updated._id,
+          status: updates.status,
+          action: "update",
+        },
+        "create"
+      );
     }
 
     return res
