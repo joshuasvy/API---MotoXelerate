@@ -231,22 +231,22 @@ router.put("/:id", authToken, async (req, res) => {
       return res.status(404).json({ message: "Appointment not found" });
     }
 
-    // ✅ If status was updated, log a notification
+    // ✅ If status was updated, log a notification for the USER
     if (updates.status) {
       await NotificationLog.create({
-        userId: updated.userId,
+        userId: updated.userId, // belongs to the user
         appointmentId: updated._id,
-        type: "appointment",
+        type: "appointment", // user-facing type
         customerName: updated.customer_Name,
         message: `Your appointment for ${updated.service_Type} has been ${updates.status}.`,
         status: updates.status,
       });
 
       console.log(
-        `🔔 Notification logged for appointment ${updated._id} status: ${updates.status}`
+        `🔔 User notification logged for appointment ${updated._id} status: ${updates.status}`
       );
 
-      // Optional: broadcast in real-time
+      // ✅ Broadcast to user side only
       broadcastEntity(
         "notification",
         {
