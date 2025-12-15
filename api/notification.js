@@ -121,7 +121,7 @@ router.get("/:userId", async (req, res) => {
  * POST /api/notifications/:id/action
  */
 router.post("/:id/action", async (req, res) => {
-  const { action } = req.body; // "accept" or "reject"
+  const { action } = req.body;
   const { id } = req.params;
 
   try {

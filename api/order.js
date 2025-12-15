@@ -211,11 +211,6 @@ router.get("/", authToken, async (req, res) => {
       strictPopulate: false,
     });
 
-    // if (!orders || orders.length === 0) {
-    //   console.warn("⚠️ No orders found in database");
-    //   return res.status(200).json([]);
-    // }
-
     const formattedOrders = orders.map((order) => {
       const formattedItems = (order.items || []).map((item) => ({
         productId: item.product?._id,
@@ -516,10 +511,12 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       cancellationReason: order.cancellationReason,
     });
 
-    await NotificationLog.create({
+    // ✅ Include customerName in the notification document
+    const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRequest",
       orderId: order._id,
+      customerName: order.customerName, // <-- added
       message: `Cancellation requested by ${order.customerName}`,
       reason,
       createdAt: new Date(),
@@ -528,16 +525,7 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
 
     console.log("📝 NotificationLog entry created for cancellation request");
 
-    broadcastEntity(
-      "notification",
-      {
-        type: "CancellationRequest",
-        orderId: order._id.toString(),
-        customerName: order.customerName,
-        reason: order.cancellationReason,
-      },
-      "create"
-    );
+    broadcastEntity("notification", notif.toObject(), "create");
 
     console.log("📡 Broadcasted cancellation request notification");
 
@@ -609,6 +597,64 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
     res.json({ message: "Cancellation accepted, order cancelled", order });
   } catch (err) {
     console.error("❌ Error accepting cancellation:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id/reject-cancel", authToken, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    console.log("🛠 RejectCancel route triggered");
+    console.log("Received orderId param:", orderId);
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.warn(`⚠️ No order found with _id=${orderId}`);
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Only allow rejection if cancellation was requested
+    if (order.cancellationStatus !== "Requested") {
+      console.warn(
+        `⚠️ Order ${orderId} cancellationStatus is "${order.cancellationStatus}", not "Requested"`
+      );
+      return res.status(400).json({
+        error: "Cancellation must be requested before it can be rejected",
+      });
+    }
+
+    // Update cancellation fields
+    order.cancellationStatus = "Rejected";
+    await order.save();
+
+    console.log("✅ Cancellation rejected:", {
+      _id: order._id.toString(),
+      cancellationStatus: order.cancellationStatus,
+      cancellationReason: order.cancellationReason,
+    });
+
+    // ✅ Persist notification in DB
+    const notif = await NotificationLog.create({
+      userId: order.userId,
+      type: "CancellationRejected",
+      orderId: order._id,
+      customerName: order.customerName,
+      message: `Cancellation rejected for ${order.customerName}`,
+      createdAt: new Date(),
+      readAt: null,
+    });
+
+    console.log("📝 NotificationLog entry created for cancellation rejection");
+
+    // ✅ Broadcast persisted notification
+    broadcastEntity("notification", notif.toObject(), "create");
+
+    console.log("📡 Broadcasted order + notification update");
+
+    res.json({ message: "Cancellation rejected, order remains active", order });
+  } catch (err) {
+    console.error("❌ Error rejecting cancellation:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
