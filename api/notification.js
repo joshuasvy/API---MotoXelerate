@@ -144,11 +144,13 @@ router.post("/:id/action", async (req, res) => {
       type:
         action === "accept" ? "CancellationAccepted" : "CancellationRejected",
       customerName: requestNotif.customerName,
+      reason: requestNotif.reason,
       message:
         action === "accept"
           ? `Cancellation request accepted for ${requestNotif.customerName}`
           : `Cancellation request rejected for ${requestNotif.customerName}`,
     });
+
     await newNotif.save();
     console.log(
       "✅ Created new outcome notification:",
