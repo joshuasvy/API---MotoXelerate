@@ -2,6 +2,8 @@ import { broadcastEntity } from "../utils/socketBroadcast.js";
 import mongoose from "mongoose";
 import express from "express";
 import NotificationLog from "../models/NotificationLog.js";
+import Orders from "../models/Orders.js";
+import Appointments from "../models/Appointments.js";
 
 const router = express.Router();
 
