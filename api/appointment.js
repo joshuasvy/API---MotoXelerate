@@ -36,7 +36,7 @@ router.post("/", authToken, async (req, res) => {
 
     // ✅ Create Appointment
     const newAppointment = new Appointments({
-      userId: user._id, // always use user._id
+      userId: user._id,
       customer_Name: fullName,
       customerEmail: user.email,
       customerPhone: user.contact,
@@ -123,24 +123,27 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", savedAppointment.toObject(), "update");
     broadcastEntity("invoice", newInvoice.toObject(), "update");
 
-    broadcastEntity(
-      "notification",
-      {
-        _id: notif._id.toString(),
-        appointmentId: savedAppointment._id.toString(),
-        customerName: fullName,
-        type: "appointment",
-        message: notif.message,
-        createdAt: notif.createdAt,
-      },
-      "create"
-    );
+    // 🔎 Normalize notification payload for frontend
+    const notifPayload = {
+      id: notif._id.toString(), // use id
+      orderId: notif.orderId ?? null,
+      appointmentId: notif.appointmentId?.toString() ?? null,
+      customerName: notif.customerName ?? "",
+      type: notif.type,
+      message: notif.message,
+      reason: notif.reason ?? "",
+      status: notif.status ?? "",
+      createdAt: notif.createdAt,
+      read: Boolean(notif.readAt), // convert readAt to boolean
+    };
+
+    broadcastEntity("notification", notifPayload, "create");
 
     return res.status(201).json({
       message: "Appointment booked! Awaiting downpayment.",
       appointment: savedAppointment,
       invoice: newInvoice,
-      notification: notif,
+      notification: notifPayload,
     });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
