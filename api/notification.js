@@ -131,62 +131,25 @@ router.get("/:userId", async (req, res) => {
 
 router.get("/:userId/notifications", async (req, res) => {
   const { userId } = req.params;
-
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     console.warn(`[WARN] Invalid userId format: ${userId}`);
     return res.status(400).json({ error: "Invalid user ID" });
   }
-
   try {
-    console.log(
-      `[INFO] Fetching notifications (orders + appointments) for userId: ${userId}`
-    );
-
-    // Fetch orders
-    const orders = await Orders.find({ userId })
-      .sort({ updatedAt: -1 })
-      .select("_id updatedAt items")
-      .populate({
-        path: "items.product",
-        select: "_id productName image",
-      });
-
-    // Fetch appointments
-    const appointments = await Appointments.find({ userId })
-      .sort({ updatedAt: -1 })
-      .select("_id updatedAt items")
-      .populate({
-        path: "items.service",
-        select: "_id serviceName image",
-      });
-
-    // Normalize appointments to look like orders for frontend
-    const normalizedAppointments = appointments.map((appt) => ({
-      _id: appt._id,
-      updatedAt: appt.updatedAt,
-      items: appt.items.map((item) => ({
-        status: item.status,
-        product: {
-          _id: item.service?._id,
-          productName: item.service?.serviceName,
-          image: item.service?.image,
-        },
-      })),
-    }));
-
-    const combined = [...orders, ...normalizedAppointments].sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-    );
-
-    if (combined.length === 0) {
+    console.log(`[INFO] Fetching notifications for userId: ${userId}`);
+    const notifications = await NotificationLog.find({ userId })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id orderId appointmentId type customerName message reason status createdAt updatedAt readAt"
+      );
+    if (!notifications || notifications.length === 0) {
       console.log(`[INFO] No notifications found for userId: ${userId}`);
       return res.status(200).json([]);
     }
-
     console.log(
-      `[INFO] Found ${combined.length} notifications for userId: ${userId}`
+      `[INFO] Found ${notifications.length} notifications for userId: ${userId}`
     );
-    res.json(combined);
+    res.json(notifications);
   } catch (err) {
     console.error(
       `[ERROR] Failed to fetch notifications for userId: ${userId}`,
