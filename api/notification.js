@@ -5,10 +5,7 @@ import NotificationLog from "../models/NotificationLog.js";
 
 const router = express.Router();
 
-/**
- * ✅ Mark all notifications as read for a user
- * PUT /api/notifications/:userId/mark-read
- */
+// Mark all notifications for a specific user as read
 router.put("/:userId/mark-read", async (req, res) => {
   const { userId } = req.params;
   try {
@@ -36,16 +33,13 @@ router.put("/:userId/mark-read", async (req, res) => {
   }
 });
 
-// Mark ALL notifications in the system as read (admin only)
+// Mark all notifications for admin as read
 router.put("/mark-read", async (req, res) => {
   try {
-    // Update every notification that is still unread
     const result = await NotificationLog.updateMany(
       { readAt: null },
       { $set: { readAt: new Date() } }
     );
-
-    // Broadcast a global mark-read event
     broadcastEntity(
       "notification",
       { markedCount: result.modifiedCount, action: "mark-read" },
@@ -93,10 +87,7 @@ router.patch("/:id/read", async (req, res) => {
   }
 });
 
-/**
- * ✅ Fetch all notifications (Admin mode)
- * GET /api/notifications
- */
+// Fething all notifications for admin
 router.get("/", async (req, res) => {
   try {
     const notifications = await NotificationLog.find({})
@@ -113,10 +104,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-/**
- * ✅ Fetch notifications for a specific user
- * GET /api/notifications/:userId
- */
+// Fething all notifications for specific user
 router.get("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -139,10 +127,42 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
-/**
- * ✅ Handle cancellation request actions (accept/reject)
- * POST /api/notifications/:id/action
- */
+router.get("/:userId/notifications", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.warn(`[WARN] Invalid userId format: ${userId}`);
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+
+  try {
+    console.log(`[INFO] Fetching notifications for userId: ${userId}`);
+
+    const notifications = await NotificationLog.find({ userId })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id type orderId appointmentId customerName message reason createdAt readAt"
+      );
+
+    if (!notifications || notifications.length === 0) {
+      console.log(`[INFO] No notifications found for userId: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    console.log(
+      `[INFO] Found ${notifications.length} notifications for userId: ${userId}`
+    );
+    res.json(notifications);
+  } catch (err) {
+    console.error(
+      `[ERROR] Failed to fetch notifications for userId: ${userId}`,
+      err
+    );
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+});
+
+// Handle cancellation request actions (accept/reject)
 router.post("/:id/action", async (req, res) => {
   const { action } = req.body;
   const { id } = req.params;
