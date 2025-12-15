@@ -5,11 +5,10 @@ const NotificationLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      // Only required for user-facing notifications
+      // Only required for user-facing notifications (orders & cancellations)
       required: function () {
         return [
           "order",
-          "appointment",
           "CancellationRequest",
           "CancellationAccepted",
           "CancellationRejected",
