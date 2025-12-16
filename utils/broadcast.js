@@ -15,7 +15,7 @@ export function broadcastEntity(entity, payload, action = "update") {
   const eventName = `${entity}:${action}`;
 
   // 🔎 Normalize notification payloads so frontend hook can parse them consistently
-  const normalized = payload;
+  let normalized = payload;
   if (entity === "notification") {
     normalized = {
       id: payload._id?.toString() ?? payload.id,
