@@ -203,7 +203,7 @@ router.get("/user", authToken, async (req, res) => {
       .sort({ date: -1 })
       .lean();
 
-    return res.status(200).json({ appointments });
+    return res.status(200).json(appointments);
   } catch (err) {
     console.error("❌ Fetch error:", err.message);
     return res.status(500).json({ error: "Internal server error" });
