@@ -147,6 +147,56 @@ router.get("/:userId/notifications", async (req, res) => {
   }
 });
 
+// Fetch richer notifications for mobile
+router.get("/:userId/mobile-notifications", async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+
+  try {
+    // Get orders for this user
+    const orders = await Orders.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("_id items status updatedAt createdAt");
+
+    // Get appointments for this user
+    const appointments = await Appointments.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("_id service_Type date time status updatedAt createdAt");
+
+    // Normalize into a unified notification list
+    const orderNotifs = orders.map((o) => ({
+      type: "order",
+      _id: o._id,
+      items: o.items, // includes product image + status
+      status: o.status,
+      updatedAt: o.updatedAt,
+      createdAt: o.createdAt,
+    }));
+
+    const appointmentNotifs = appointments.map((a) => ({
+      type: "appointment",
+      _id: a._id,
+      serviceType: a.service_Type,
+      date: a.date,
+      time: a.time,
+      status: a.status,
+      updatedAt: a.updatedAt,
+      createdAt: a.createdAt,
+    }));
+
+    const notifications = [...orderNotifs, ...appointmentNotifs].sort(
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    res.json(notifications);
+  } catch (err) {
+    console.error("❌ Error fetching mobile notifications:", err);
+    res.status(500).json({ error: "Failed to fetch mobile notifications" });
+  }
+});
+
 // Handle cancellation request actions (accept/reject)
 router.post("/:id/action", async (req, res) => {
   const { action } = req.body;
