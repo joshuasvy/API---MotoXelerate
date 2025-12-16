@@ -1,41 +1,39 @@
-// scripts/fixPaymentIndex.js
+// scripts/fixAppointmentNotifications.js
 import mongoose from "mongoose";
+import NotificationLog from "./models/NotificationLog.js";
+import Appointments from "./models/Appointments.js";
 import dotenv from "dotenv";
-
 dotenv.config();
 
-async function run() {
-  try {
-    // 1. Connect to your MongoDB
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ Connected to MongoDB");
+async function fixAppointmentNotifications() {
+  await mongoose.connect(process.env.MONGO_URI);
 
-    const db = mongoose.connection.db;
+  // Find all notifications of type "appointment" missing userId
+  const brokenNotifs = await NotificationLog.find({
+    type: "appointment",
+    $or: [{ userId: { $exists: false } }, { userId: null }],
+  });
 
-    // 2. Drop the old index if it exists
-    try {
-      await db.collection("appointments").dropIndex("payment.referenceId_1");
-      console.log("🗑️ Dropped old unique index on payment.referenceId");
-    } catch (err) {
-      console.warn("⚠️ No existing index to drop:", err.message);
+  console.log(`Found ${brokenNotifs.length} broken appointment notifications`);
+
+  for (const notif of brokenNotifs) {
+    // Look up the appointment to get its userId
+    const appointment = await Appointments.findById(notif.appointmentId);
+    if (!appointment) {
+      console.warn(`⚠️ Appointment not found for notif ${notif._id}`);
+      continue;
     }
 
-    // 3. Recreate as partial unique index (only enforce when field exists)
-    await db.collection("appointments").createIndex(
-      { "payment.referenceId": 1 },
-      {
-        unique: true,
-        partialFilterExpression: { "payment.referenceId": { $exists: true } },
-      }
+    notif.userId = appointment.userId;
+    await notif.save();
+    console.log(
+      `✅ Fixed notif ${notif._id} with userId ${appointment.userId}`
     );
-    console.log("✅ Created partial unique index on payment.referenceId");
-
-    await mongoose.disconnect();
-    console.log("🔌 Disconnected from MongoDB");
-  } catch (err) {
-    console.error("❌ Migration failed:", err);
-    process.exit(1);
   }
+
+  await mongoose.disconnect();
 }
 
-run();
+fixAppointmentNotifications().catch((err) => {
+  console.error("❌ Error fixing appointment notifications:", err);
+});

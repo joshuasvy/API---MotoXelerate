@@ -190,6 +190,27 @@ router.post("/", async (req, res) => {
       },
       "create"
     );
+    broadcastEntity(
+      "notification",
+      {
+        _id: notif._id.toString(),
+        orderId: confirmed._id.toString(),
+        customerName: confirmed.customerName,
+        type: "order",
+        message: notif.message,
+        status: confirmed.items[0]?.status,
+        items: confirmed.items.map((i) => ({
+          product: {
+            _id: i.product._id.toString(),
+            image: i.product.image,
+          },
+          status: i.status,
+        })),
+        createdAt: notif.createdAt,
+        userId: user._id.toString(),
+      },
+      "create"
+    );
 
     return res
       .status(201)
