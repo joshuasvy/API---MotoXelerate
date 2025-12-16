@@ -572,6 +572,7 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
 
     // Update order fields
     order.cancellationStatus = "Accepted";
+    order.status = "Cancelled";
     order.cancelledAt = new Date();
     order.items = order.items.map((item) => ({ ...item, status: "Cancelled" }));
     await order.save();

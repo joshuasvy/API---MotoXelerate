@@ -1,39 +1,69 @@
-// scripts/fixAppointmentNotifications.js
 import mongoose from "mongoose";
+import Order from "./models/Orders.js";
 import NotificationLog from "./models/NotificationLog.js";
-import Appointments from "./models/Appointments.js";
+import Product from "./models/Product.js";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-async function fixAppointmentNotifications() {
-  await mongoose.connect(process.env.MONGO_URI);
+async function syncNotifications() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
 
-  // Find all notifications of type "appointment" missing userId
-  const brokenNotifs = await NotificationLog.find({
-    type: "appointment",
-    $or: [{ userId: { $exists: false } }, { userId: null }],
-  });
+    console.log("🔗 Connected to MongoDB");
 
-  console.log(`Found ${brokenNotifs.length} broken appointment notifications`);
+    // Find all notifications missing enriched fields
+    const notifications = await NotificationLog.find({
+      type: {
+        $in: [
+          "CancellationRequest",
+          "CancellationAccepted",
+          "CancellationRejected",
+        ],
+      },
+    });
 
-  for (const notif of brokenNotifs) {
-    // Look up the appointment to get its userId
-    const appointment = await Appointments.findById(notif.appointmentId);
-    if (!appointment) {
-      console.warn(`⚠️ Appointment not found for notif ${notif._id}`);
-      continue;
+    console.log(`📦 Found ${notifications.length} notifications to check`);
+
+    for (const notif of notifications) {
+      if (!notif.orderId) continue;
+
+      const order = await Order.findById(notif.orderId).populate({
+        path: "items.product",
+        select: "productName specification price image",
+      });
+
+      if (!order) {
+        console.warn(`⚠️ No order found for notification ${notif._id}`);
+        continue;
+      }
+
+      // Update notification with missing fields
+      notif.customerEmail = order.customerEmail;
+      notif.customerPhone = order.customerPhone;
+      notif.deliveryAddress = order.deliveryAddress;
+      notif.paymentMethod = order.paymentMethod;
+      notif.totalOrder = order.totalOrder;
+      notif.notes = order.notes;
+      notif.items = order.items;
+      notif.payment = {
+        cancellationStatus: order.cancellationStatus,
+        cancellationReason: order.cancellationReason,
+        cancelledAt: order.cancelledAt ?? null,
+      };
+
+      await notif.save();
+      console.log(
+        `✅ Updated notification ${notif._id} with enriched order data`
+      );
     }
 
-    notif.userId = appointment.userId;
-    await notif.save();
-    console.log(
-      `✅ Fixed notif ${notif._id} with userId ${appointment.userId}`
-    );
+    console.log("🎉 Sync complete");
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Error syncing notifications:", err.message);
+    process.exit(1);
   }
-
-  await mongoose.disconnect();
 }
 
-fixAppointmentNotifications().catch((err) => {
-  console.error("❌ Error fixing appointment notifications:", err);
-});
+syncNotifications();
