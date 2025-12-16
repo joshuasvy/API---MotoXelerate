@@ -1,3 +1,4 @@
+// utils/broadcast.js
 import { io } from "../server.js";
 
 /**
@@ -14,11 +15,10 @@ export function broadcastEntity(entity, payload, action = "update") {
 
   const eventName = `${entity}:${action}`;
 
-  // 🔎 Normalize notification payloads so frontend hook can parse them consistently
   let normalized = payload;
   if (entity === "notification") {
     normalized = {
-      id: payload._id?.toString() ?? payload.id,
+      _id: payload._id?.toString() ?? payload.id, // ✅ keep _id for consistency
       orderId: payload.orderId ?? null,
       appointmentId: payload.appointmentId?.toString() ?? null,
       customerName: payload.customerName ?? "",
@@ -27,7 +27,7 @@ export function broadcastEntity(entity, payload, action = "update") {
       reason: payload.reason ?? "",
       status: payload.status ?? "",
       createdAt: payload.createdAt ?? new Date().toISOString(),
-      read: payload.read ?? Boolean(payload.readAt),
+      readAt: payload.readAt ?? null, // ✅ use readAt, not read
     };
   }
 
