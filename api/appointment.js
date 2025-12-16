@@ -123,19 +123,19 @@ router.post("/", authToken, async (req, res) => {
     broadcastEntity("appointment", savedAppointment.toObject(), "update");
     broadcastEntity("invoice", newInvoice.toObject(), "update");
 
-    // 🔎 Normalize notification payload for frontend
+    // 🔎 Normalize notification payload for frontend (same style as Order route)
     const notifPayload = {
-      id: notif._id.toString(),
-      orderId: notif.orderId ?? null,
-      appointmentId: notif.appointmentId?.toString() ?? null,
-      customerName: notif.customerName ?? "",
-      type: notif.type,
+      _id: notif._id.toString(), // ✅ use _id for consistency
+      appointmentId: savedAppointment._id.toString(),
+      customerName: fullName,
+      type: "appointment",
       message: notif.message,
-      reason: notif.reason ?? "",
-      status: notif.status ?? "",
+      status: notif.status,
       createdAt: notif.createdAt,
-      readAt: notif.readAt ?? null,
+      userId: user._id.toString(),
+      readAt: notif.readAt ?? null, // ✅ include readAt
     };
+
     broadcastEntity("notification", notifPayload, "create");
 
     return res.status(201).json({
