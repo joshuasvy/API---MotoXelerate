@@ -163,7 +163,16 @@ router.post("/", async (req, res) => {
       type: "order",
       customerName: confirmed.customerName,
       message: `New order from ${confirmed.customerName}`,
+      status: confirmed.items[0]?.status,
+      items: confirmed.items.map((i) => ({
+        product: {
+          _id: i.product._id,
+          image: i.product.image,
+        },
+        status: i.status,
+      })),
     });
+
     await notif.save({ session });
     console.log("📒 NotificationLog created for user:", user._id.toString());
 
