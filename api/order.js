@@ -206,10 +206,13 @@ router.post("/", async (req, res) => {
         orderId: confirmed._id.toString(),
         customerName: confirmed.customerName,
         type: "order",
-        message: notif.message,
-        status: confirmed.items[0]?.status,
+        message: notif.message, // ✅ still useful for admin
+        status: confirmed.items[0]?.status, // ✅ mobile needs this
         items: confirmed.items.map((i) => ({
-          product: { _id: i.product._id.toString(), image: i.product.image },
+          product: {
+            _id: i.product._id.toString(),
+            image: i.product.image,
+          },
           status: i.status,
         })),
         createdAt: notif.createdAt,
