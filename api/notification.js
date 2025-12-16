@@ -155,9 +155,15 @@ router.get("/:userId/mobile-notifications", async (req, res) => {
   }
 
   try {
-    // Get orders for this user
+    // Get orders for this user with product details
     const orders = await Orders.find({ userId })
       .sort({ updatedAt: -1 })
+      .populate({
+        path: "items.product",
+        model: "Product",
+        select: "productName specification price image",
+        strictPopulate: false,
+      })
       .select("_id items status updatedAt createdAt");
 
     // Get appointments for this user
@@ -169,7 +175,7 @@ router.get("/:userId/mobile-notifications", async (req, res) => {
     const orderNotifs = orders.map((o) => ({
       type: "order",
       _id: o._id,
-      items: o.items, // includes product image + status
+      items: o.items, // now includes product.image
       status: o.status,
       updatedAt: o.updatedAt,
       createdAt: o.createdAt,
