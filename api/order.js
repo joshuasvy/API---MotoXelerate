@@ -193,21 +193,8 @@ router.post("/", async (req, res) => {
         orderId: confirmed._id.toString(),
         customerName: confirmed.customerName,
         type: "order",
-        message: notif.message,
-        createdAt: notif.createdAt,
-        userId: user._id.toString(),
-      },
-      "create"
-    );
-    broadcastEntity(
-      "notification",
-      {
-        _id: notif._id.toString(),
-        orderId: confirmed._id.toString(),
-        customerName: confirmed.customerName,
-        type: "order",
-        message: notif.message, // ✅ still useful for admin
-        status: confirmed.items[0]?.status, // ✅ mobile needs this
+        message: notif.message, // admin can still show this
+        status: confirmed.items[0]?.status, // mobile needs this
         items: confirmed.items.map((i) => ({
           product: {
             _id: i.product._id.toString(),

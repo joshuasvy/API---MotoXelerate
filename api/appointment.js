@@ -105,7 +105,11 @@ router.post("/", authToken, async (req, res) => {
       customerName: fullName,
       message: `${fullName} booked an appointment for ${service_Type} on ${parsedDate.toDateString()} at ${time}.`,
       status: savedAppointment.status,
+      serviceType: service_Type,
+      date: parsedDate,
+      time: time,
     });
+
     await notif.save({ session });
     console.log(
       "📒 NotificationLog created for appointment:",
