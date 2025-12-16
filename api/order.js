@@ -209,10 +209,7 @@ router.post("/", async (req, res) => {
         message: notif.message,
         status: confirmed.items[0]?.status,
         items: confirmed.items.map((i) => ({
-          product: {
-            _id: i.product._id.toString(),
-            image: i.product.image,
-          },
+          product: { _id: i.product._id.toString(), image: i.product.image },
           status: i.status,
         })),
         createdAt: notif.createdAt,
