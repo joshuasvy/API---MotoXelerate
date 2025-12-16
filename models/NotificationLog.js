@@ -28,7 +28,19 @@ const NotificationLogSchema = new mongoose.Schema(
       ],
       required: true,
     },
+
+    // ✅ Customer details
     customerName: { type: String },
+    customerEmail: { type: String },
+    customerPhone: { type: String },
+
+    // ✅ Order summary
+    deliveryAddress: { type: String },
+    paymentMethod: { type: String },
+    totalOrder: { type: Number },
+    notes: { type: String },
+
+    // ✅ Notification content
     message: { type: String, required: true },
     reason: { type: String },
     status: { type: String },
@@ -38,16 +50,27 @@ const NotificationLogSchema = new mongoose.Schema(
       {
         product: {
           _id: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+          productName: { type: String },
+          specification: { type: String },
+          price: { type: Number },
           image: { type: String },
         },
+        quantity: { type: Number },
         status: { type: String },
       },
     ],
 
+    // ✅ Payment cancellation details
+    payment: {
+      cancellationStatus: { type: String },
+      cancellationReason: { type: String },
+      cancelledAt: { type: Date, default: null },
+    },
+
     // ✅ Richer appointment details
-    serviceType: { type: String }, // e.g. "Change Oil"
-    date: { type: Date }, // scheduled date
-    time: { type: String }, // scheduled time (string for flexibility)
+    serviceType: { type: String },
+    date: { type: Date },
+    time: { type: String },
 
     readAt: { type: Date, default: null },
   },

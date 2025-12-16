@@ -502,49 +502,47 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
     console.log("➡️ reason:", reason);
 
     if (!reason || typeof reason !== "string") {
-      console.warn("⚠️ Missing or invalid cancellation reason");
       return res.status(400).json({ error: "Cancellation reason is required" });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate({
+      path: "items.product",
+      select: "productName specification price image",
+    });
+
     if (!order) {
-      console.warn(`⚠️ No order found with _id=${orderId}`);
       return res.status(404).json({ error: "Order not found" });
     }
-
-    console.log("✅ Order found:", {
-      _id: order._id.toString(),
-      customerName: order.customerName,
-      currentCancellationStatus: order.cancellationStatus,
-    });
 
     order.cancellationStatus = "Requested";
     order.cancellationReason = reason;
     await order.save();
 
-    console.log("📦 Order updated:", {
-      _id: order._id.toString(),
-      cancellationStatus: order.cancellationStatus,
-      cancellationReason: order.cancellationReason,
-    });
-
-    // ✅ Include customerName in the notification document
+    // 📝 Create enriched CancellationRequest notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRequest",
       orderId: order._id,
-      customerName: order.customerName, // <-- added
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      totalOrder: order.totalOrder,
+      notes: order.notes,
+      items: order.items, // populated with product details
+      payment: {
+        cancellationStatus: order.cancellationStatus,
+        cancellationReason: order.cancellationReason,
+        cancelledAt: order.cancelledAt ?? null,
+      },
       message: `Cancellation requested by ${order.customerName}`,
       reason,
       createdAt: new Date(),
       readAt: null,
     });
 
-    console.log("📝 NotificationLog entry created for cancellation request");
-
     broadcastEntity("notification", notif.toObject(), "create");
-
-    console.log("📡 Broadcasted cancellation request notification");
 
     res.json({ message: "Cancellation requested", order });
   } catch (err) {
@@ -558,14 +556,14 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
 router.put("/:id/accept-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
-
     console.log("🛠 AcceptCancel route triggered");
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
+    const order = await Order.findById(orderId).populate({
+      path: "items.product",
+      select: "productName specification price image",
+    });
 
+    if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.cancellationStatus !== "Requested") {
       return res.status(400).json({
         error: "Cancellation must be requested before it can be accepted",
@@ -578,24 +576,36 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
     order.items = order.items.map((item) => ({ ...item, status: "Cancelled" }));
     await order.save();
 
-    // 🗑️ Remove original CancellationRequest notification
+    // Remove original CancellationRequest notification
     await NotificationLog.deleteOne({
       orderId: order._id,
       type: "CancellationRequest",
     });
 
-    // 📝 Create new CancellationAccepted notification
+    // Create enriched CancellationAccepted notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationAccepted",
       orderId: order._id,
       customerName: order.customerName,
-      message: `Cancellation accepted for ${order.customerName}`,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      totalOrder: order.totalOrder,
+      notes: order.notes,
+      items: order.items,
+      payment: {
+        cancellationStatus: order.cancellationStatus,
+        cancellationReason: order.cancellationReason,
+        cancelledAt: order.cancelledAt ?? null,
+      },
+      message: `Cancellation accepted for order by ${order.customerName}`,
       createdAt: new Date(),
       readAt: null,
     });
 
-    // 📡 Broadcast delete + create
+    // Broadcast delete + create
     broadcastEntity(
       "notification",
       { orderId: order._id.toString(), action: "delete" },
@@ -606,21 +616,23 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
     res.json({ message: "Cancellation accepted, order cancelled", order });
   } catch (err) {
     console.error("❌ Error accepting cancellation:", err.message);
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 });
 
 router.put("/:id/reject-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
-
     console.log("🛠 RejectCancel route triggered");
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
+    const order = await Order.findById(orderId).populate({
+      path: "items.product",
+      select: "productName specification price image",
+    });
 
+    if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.cancellationStatus !== "Requested") {
       return res.status(400).json({
         error: "Cancellation must be requested before it can be rejected",
@@ -631,24 +643,36 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
     order.cancellationStatus = "Rejected";
     await order.save();
 
-    // 🗑️ Remove original CancellationRequest notification
+    // Remove original CancellationRequest notification
     await NotificationLog.deleteOne({
       orderId: order._id,
       type: "CancellationRequest",
     });
 
-    // 📝 Create new CancellationRejected notification
+    // Create enriched CancellationRejected notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRejected",
       orderId: order._id,
       customerName: order.customerName,
-      message: `Cancellation rejected for ${order.customerName}`,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      totalOrder: order.totalOrder,
+      notes: order.notes,
+      items: order.items,
+      payment: {
+        cancellationStatus: order.cancellationStatus,
+        cancellationReason: order.cancellationReason,
+        cancelledAt: order.cancelledAt ?? null,
+      },
+      message: `Cancellation rejected for order by ${order.customerName}`,
       createdAt: new Date(),
       readAt: null,
     });
 
-    // 📡 Broadcast delete + create
+    // Broadcast delete + create
     broadcastEntity(
       "notification",
       { orderId: order._id.toString(), action: "delete" },
@@ -659,7 +683,9 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
     res.json({ message: "Cancellation rejected, order remains active", order });
   } catch (err) {
     console.error("❌ Error rejecting cancellation:", err.message);
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 });
 
