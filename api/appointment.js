@@ -1,5 +1,5 @@
 import { authToken } from "../middleware/authToken.js";
-import { broadcastEntity } from "../utils/socketBroadcast.js";
+import { broadcastEntity } from "../utils/broadcast.js";
 import express from "express";
 import mongoose from "mongoose";
 import Invoice from "../models/Invoice.js";

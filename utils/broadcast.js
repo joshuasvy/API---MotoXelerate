@@ -1,10 +1,9 @@
-// utils/broadcast.js
-import { io } from "../server.js"; // wherever you initialize Socket.IO
+import { io } from "../server.js";
 
 /**
  * Broadcast an entity update over Socket.IO
- * @param {string} entity - "appointment" or "invoice"
- * @param {object} payload - the object to send
+ * @param {string} entity - The entity name (e.g. "order", "appointment", "invoice", "notification").
+ * @param {object} payload - The object to send.
  * @param {string} action - e.g. "update", "delete", "create"
  */
 export function broadcastEntity(entity, payload, action = "update") {
@@ -14,12 +13,24 @@ export function broadcastEntity(entity, payload, action = "update") {
   }
 
   const eventName = `${entity}:${action}`;
-  io.emit(eventName, payload);
 
-  console.log(`📡 Broadcasted ${eventName}`, {
-    id: payload._id,
-    sourceType: payload.sourceType,
-    sourceId: payload.sourceId,
-    status: payload.status,
-  });
+  // 🔎 Normalize notification payloads so frontend hook can parse them consistently
+  const normalized = payload;
+  if (entity === "notification") {
+    normalized = {
+      id: payload._id?.toString() ?? payload.id,
+      orderId: payload.orderId ?? null,
+      appointmentId: payload.appointmentId?.toString() ?? null,
+      customerName: payload.customerName ?? "",
+      type: payload.type,
+      message: payload.message,
+      reason: payload.reason ?? "",
+      status: payload.status ?? "",
+      createdAt: payload.createdAt ?? new Date().toISOString(),
+      read: payload.read ?? Boolean(payload.readAt),
+    };
+  }
+
+  io.emit(eventName, normalized);
+  console.log(`📡 Broadcasted ${eventName}`, normalized);
 }

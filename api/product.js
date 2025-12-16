@@ -1,6 +1,6 @@
 import express from "express";
 import Product from "../models/Product.js";
-import { broadcastEntity } from "../utils/socketBroadcast.js";
+import { broadcastEntity } from "../utils/broadcast.js";
 
 const router = express.Router();
 

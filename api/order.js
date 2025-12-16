@@ -1,4 +1,4 @@
-import { broadcastEntity } from "../utils/socketBroadcast.js";
+import { broadcastEntity } from "../utils/broadcast.js";
 import { authToken } from "../middleware/authToken.js";
 import mongoose from "mongoose";
 import express from "express";
