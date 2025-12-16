@@ -116,29 +116,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Fething all notifications for specific user
-router.get("/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
-    let query = {};
-
-    if (mongoose.isValidObjectId(userId)) {
-      query = { userId: new mongoose.Types.ObjectId(userId) };
-    } else {
-      query = { userId };
-    }
-
-    const notifications = await NotificationLog.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.json(notifications);
-  } catch (err) {
-    console.error("❌ Error fetching notifications:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
+// Handles notification fetching for a specific user
 router.get("/:userId/notifications", async (req, res) => {
   const { userId } = req.params;
   if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -226,5 +204,28 @@ router.post("/:id/action", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// // Fething all notifications for specific user
+// router.get("/:userId", async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     let query = {};
+
+//     if (mongoose.isValidObjectId(userId)) {
+//       query = { userId: new mongoose.Types.ObjectId(userId) };
+//     } else {
+//       query = { userId };
+//     }
+
+//     const notifications = await NotificationLog.find(query)
+//       .sort({ createdAt: -1 })
+//       .lean();
+
+//     res.json(notifications);
+//   } catch (err) {
+//     console.error("❌ Error fetching notifications:", err.message);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 export default router;

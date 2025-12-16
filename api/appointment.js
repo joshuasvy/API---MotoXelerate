@@ -99,6 +99,7 @@ router.post("/", authToken, async (req, res) => {
 
     // ✅ NotificationLog entry inside transaction
     const notif = new NotificationLog({
+      userId: user._id,
       appointmentId: savedAppointment._id,
       type: "appointment",
       customerName: fullName,
@@ -261,24 +262,6 @@ router.put("/:id", authToken, async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ message: "Appointment not found" });
-    }
-
-    // ✅ If status was updated, log and broadcast a notification
-    if (updates.status) {
-      const notif = await NotificationLog.create({
-        appointmentId: updated._id,
-        type: "appointment", // unified single value
-        customerName: updated.customer_Name,
-        message: `${updated.customer_Name}'s appointment for ${updated.service_Type} has been ${updates.status}.`,
-        status: updates.status,
-      });
-
-      console.log(
-        `📢 Admin notification logged for appointment ${updated._id} status: ${updates.status}`
-      );
-
-      // Broadcast notification so frontend receives it
-      broadcastEntity("notification", notif, "create");
     }
 
     return res
