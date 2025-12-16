@@ -96,6 +96,7 @@ router.get("/", async (req, res) => {
       type: {
         $in: [
           "order",
+          "appointment",
           "CancellationRequest",
           "CancellationAccepted",
           "CancellationRejected",
