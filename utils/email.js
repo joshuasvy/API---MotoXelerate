@@ -42,13 +42,15 @@ export async function sendVerificationEmail(to, token) {
 
       <!-- Button -->
       <div style="text-align:center; margin-bottom:30px;">
-        <a href="${url}"
-   target="_blank"
+       <a href="${url}" target="_blank"
    style="background:#358F59; color:#fff; padding:14px 28px; 
           text-decoration:none; border-radius:8px; font-weight:bold; 
           font-size:16px; display:inline-block;">
   Verify My Email
 </a>
+<p>If the button doesn’t work, copy and paste this link into your browser:</p>
+<p><a href="${url}">${url}</a></p>
+
 
       </div>
 
