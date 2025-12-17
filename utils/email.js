@@ -35,7 +35,7 @@ export async function sendVerificationEmail(to, token) {
       </div>
 
       <!-- Heading -->
-      <h2 style="color:#e63946; text-align:center; margin-bottom:10px;">Welcome to MotoXelerate 🚀</h2>
+      <h1 style="color:#358F59; text-align:center; margin-bottom:10px;">Welcome to MotoXelerate 🚀</h1>
       <p style="font-size:16px; text-align:center; margin-bottom:25px;">
         We’re thrilled to have you on board. Please verify your email to activate your account:
       </p>
@@ -43,11 +43,13 @@ export async function sendVerificationEmail(to, token) {
       <!-- Button -->
       <div style="text-align:center; margin-bottom:30px;">
         <a href="${url}"
-           style="display:inline-block; background:#e63946; color:#fff; 
-                  padding:14px 28px; text-decoration:none; border-radius:8px; 
-                  font-weight:bold; font-size:16px; transition:background 0.3s ease;">
-          Verify My Email
-        </a>
+   target="_blank"
+   style="background:#358F59; color:#fff; padding:14px 28px; 
+          text-decoration:none; border-radius:8px; font-weight:bold; 
+          font-size:16px; display:inline-block;">
+  Verify My Email
+</a>
+
       </div>
 
       <!-- Expiry note -->
@@ -79,6 +81,8 @@ export async function sendVerificationEmail(to, token) {
     subject: msg.subject,
     textPreview: msg.text,
   });
+
+  console.log("🔗 Verification URL:", url);
 
   try {
     await sgMail.send(msg);
