@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+
 import userRoutes from "./api/user.js";
 import appointmentRoutes from "./api/appointment.js";
 import adminRoutes from "./api/admin.js";
@@ -24,9 +25,37 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// ✅ Allowed origins
+const allowedOrigins = [
+  "http://localhost:5173", // Vite dev server
+  "http://localhost:3000", // CRA dev server
+  "https://api-motoxelerate.onrender.com", // backend itself
+  "https://motoxcelerate.com", // production frontend domain (add if you have one)
+];
+
+// ✅ Express CORS middleware
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // allow curl, mobile apps
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+// ✅ Socket.IO CORS config
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "https://api-motoxelerate.onrender.com"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -48,9 +77,6 @@ io.on("connection", (socket) => {
     console.error("❌ Socket error:", err);
   });
 });
-
-app.use(cors());
-app.use(express.json());
 
 app.get("/health", (req, res) => res.send("OK"));
 app.get("/", (req, res) => res.send("Connected!"));
