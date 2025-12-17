@@ -22,10 +22,54 @@ export async function sendVerificationEmail(to, token) {
   const msg = {
     to,
     from: process.env.EMAIL_FROM,
-    subject: "MotoXelerate — Verify your email",
-    text: `Verify your account by clicking this link: ${url}`,
-    html: `<p>Click <a href="${url}">here</a> to verify your account.</p>
-           <p>This link expires in 30 minutes.</p>`,
+    subject: "Welcome to MotoXelerate 🚀 — Verify your account",
+    text: `Hi ${to},\n\nWelcome to MotoXelerate! Please verify your account by clicking this link: ${url}\n\nThis link expires in 30 minutes.`,
+    html: `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; max-width:600px; margin:auto; padding:30px; background:#f9f9f9; border-radius:12px;">
+      
+      <!-- Logo -->
+      <div style="text-align:center; margin-bottom:20px;">
+        <img src="https://github.com/joshuasvy/motoXelerate-mobile-app-/blob/main/assets/Images/logo/motoxelerate.png?raw=true"
+             alt="MotoXelerate Logo"
+             style="width:140px; height:auto;" />
+      </div>
+
+      <!-- Heading -->
+      <h2 style="color:#e63946; text-align:center; margin-bottom:10px;">Welcome to MotoXelerate 🚀</h2>
+      <p style="font-size:16px; text-align:center; margin-bottom:25px;">
+        We’re thrilled to have you on board. Please verify your email to activate your account:
+      </p>
+
+      <!-- Button -->
+      <div style="text-align:center; margin-bottom:30px;">
+        <a href="${url}"
+           style="display:inline-block; background:#e63946; color:#fff; 
+                  padding:14px 28px; text-decoration:none; border-radius:8px; 
+                  font-weight:bold; font-size:16px; transition:background 0.3s ease;">
+          Verify My Email
+        </a>
+      </div>
+
+      <!-- Expiry note -->
+      <p style="text-align:center; font-size:14px; color:#555; margin-bottom:20px;">
+        This link will expire in 30 minutes.
+      </p>
+
+      <hr style="margin:30px 0; border:none; border-top:1px solid #ddd;" />
+
+      <!-- Disclaimer -->
+      <p style="font-size:12px; color:#999; text-align:center;">
+        If you didn’t create this account, you can safely ignore this email.
+      </p>
+
+      <!-- Hover style -->
+      <style>
+        a:hover {
+          background:#c72c3c !important;
+        }
+      </style>
+    </div>
+  `,
   };
 
   // Defensive log: confirm message payload
