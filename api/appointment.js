@@ -196,7 +196,6 @@ router.get("/", authToken, async (req, res) => {
 
 router.get("/user", authToken, async (req, res) => {
   try {
-    console.log("📥 GET /api/appointment/user hit");
     const userId = req.user.id;
 
     const appointments = await Appointments.find({ userId })
