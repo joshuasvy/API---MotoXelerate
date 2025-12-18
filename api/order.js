@@ -1,6 +1,5 @@
 import { broadcastEntity } from "../utils/broadcast.js";
 import { authToken } from "../middleware/authToken.js";
-import { deriveOrderStatus } from "../utils/deriveStatus.js";
 import mongoose from "mongoose";
 import express from "express";
 import Order from "../models/Orders.js";
@@ -222,15 +221,12 @@ router.post("/", async (req, res) => {
 
 router.get("/", authToken, async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 })
-      .populate({
-        path: "items.product",
-        model: "Product",
-        select: "productName specification price image",
-        strictPopulate: false,
-      })
-      .lean(); // ✅ plain objects
+    const orders = await Order.find().sort({ createdAt: -1 }).populate({
+      path: "items.product",
+      model: "Product",
+      select: "productName specification price image",
+      strictPopulate: false,
+    });
 
     const formattedOrders = orders.map((order) => {
       const formattedItems = (order.items || []).map((item) => ({
@@ -243,17 +239,6 @@ router.get("/", authToken, async (req, res) => {
         status: item.status,
         read: item.read === false ? false : true,
       }));
-
-      // 🔎 Compute overall status
-      const status = deriveOrderStatus(order);
-
-      // Defensive log
-      console.log("🔍 Derived status check:", {
-        orderId: order._id.toString(),
-        itemStatuses: order.items.map((i) => i.status),
-        cancellationStatus: order.cancellationStatus,
-        derivedStatus: status,
-      });
 
       return {
         _id: order._id,
@@ -268,7 +253,6 @@ router.get("/", authToken, async (req, res) => {
         deliveryAddress: order.deliveryAddress || "No address provided",
         notes: order.notes || "",
         items: formattedItems,
-        status, // ✅ attach derived status
       };
     });
 
@@ -300,17 +284,12 @@ router.get("/user/:userId", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Only keep orders where at least one item is Completed
-    const completedOrders = orders.filter((order) =>
-      order.items.some((item) => item.status === "Completed")
-    );
-
-    if (completedOrders.length === 0) {
-      console.warn("⚠️ No completed orders found for user:", userId);
+    if (!orders || orders.length === 0) {
+      console.warn("⚠️ No orders found for user:", userId);
       return res.status(200).json([]);
     }
 
-    const formattedOrders = completedOrders.map((order) => {
+    const formattedOrders = orders.map((order) => {
       const formattedItems = (order.items || [])
         .map((item, itemIndex) => {
           const product = item.product;
@@ -336,8 +315,8 @@ router.get("/user/:userId", async (req, res) => {
         .filter(Boolean);
 
       return {
-        _id: order._id,
-        orderId: order._id.toString(),
+        _id: order._id, // ✅ MongoDB ObjectId
+        orderId: order._id.toString(), // ✅ optional alias if you want to keep using "orderId"
         customerName: order.customerName,
         customerEmail: order.customerEmail,
         customerPhone: order.customerPhone,
@@ -351,9 +330,7 @@ router.get("/user/:userId", async (req, res) => {
       };
     });
 
-    console.log(
-      `🧾 Final formattedOrders for user ${userId}: ${formattedOrders.length} completed orders`
-    );
+    console.log("🧾 Final formattedOrders:", formattedOrders);
     res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
@@ -372,25 +349,13 @@ router.get("/:id", async (req, res) => {
   }
 
   try {
-    const order = await Order.findById(id).populate("items.product").lean();
+    const order = await Order.findById(id).populate("items.product").lean(); // ✅ plain object with all fields
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // 🔎 Compute overall status from items + cancellation flags
-    const status = deriveOrderStatus(order);
-
-    // Defensive log to catch mismatches
-    console.log("🔍 Derived status check:", {
-      orderId: order._id.toString(),
-      itemStatuses: order.items.map((i) => i.status),
-      cancellationStatus: order.cancellationStatus,
-      derivedStatus: status,
-    });
-
-    // ✅ Attach derived status before sending
-    res.status(200).json({ ...order, status });
+    res.status(200).json(order); // ✅ send everything
   } catch (err) {
     console.error("❌ Error fetching order by ID:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -532,6 +497,10 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
   const { reason } = req.body;
 
   try {
+    console.log("🛠 Request-cancel route triggered");
+    console.log("➡️ orderId:", orderId);
+    console.log("➡️ reason:", reason);
+
     if (!reason || typeof reason !== "string") {
       return res.status(400).json({ error: "Cancellation reason is required" });
     }
@@ -541,17 +510,15 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       select: "productName specification price image",
     });
 
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
-    // Update cancellation fields only
     order.cancellationStatus = "Requested";
     order.cancellationReason = reason;
-
-    // Do NOT set order.status here — derive later
-    // Optionally leave items untouched until accepted
-
     await order.save();
 
+    // 📝 Create enriched CancellationRequest notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRequest",
@@ -563,7 +530,7 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
       paymentMethod: order.paymentMethod,
       totalOrder: order.totalOrder,
       notes: order.notes,
-      items: order.items,
+      items: order.items, // populated with product details
       payment: {
         cancellationStatus: order.cancellationStatus,
         cancellationReason: order.cancellationReason,
@@ -589,6 +556,8 @@ router.put("/:id/request-cancel", authToken, async (req, res) => {
 router.put("/:id/accept-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
+    console.log("🛠 AcceptCancel route triggered");
+
     const order = await Order.findById(orderId).populate({
       path: "items.product",
       select: "productName specification price image",
@@ -596,25 +565,25 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
 
     if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.cancellationStatus !== "Requested") {
-      return res
-        .status(400)
-        .json({ error: "Cancellation must be requested first" });
+      return res.status(400).json({
+        error: "Cancellation must be requested before it can be accepted",
+      });
     }
 
-    // Update cancellation fields
+    // Update order fields
     order.cancellationStatus = "Accepted";
+    order.status = "Cancelled";
     order.cancelledAt = new Date();
-
-    // Mark all items as Cancelled
     order.items = order.items.map((item) => ({ ...item, status: "Cancelled" }));
-
     await order.save();
 
+    // Remove original CancellationRequest notification
     await NotificationLog.deleteOne({
       orderId: order._id,
       type: "CancellationRequest",
     });
 
+    // Create enriched CancellationAccepted notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationAccepted",
@@ -630,13 +599,14 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
       payment: {
         cancellationStatus: order.cancellationStatus,
         cancellationReason: order.cancellationReason,
-        cancelledAt: order.cancelledAt,
+        cancelledAt: order.cancelledAt ?? null,
       },
       message: `Cancellation accepted for order by ${order.customerName}`,
       createdAt: new Date(),
       readAt: null,
     });
 
+    // Broadcast delete + create
     broadcastEntity(
       "notification",
       { orderId: order._id.toString(), action: "delete" },
@@ -656,6 +626,8 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
 router.put("/:id/reject-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
+    console.log("🛠 RejectCancel route triggered");
+
     const order = await Order.findById(orderId).populate({
       path: "items.product",
       select: "productName specification price image",
@@ -663,20 +635,22 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
 
     if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.cancellationStatus !== "Requested") {
-      return res
-        .status(400)
-        .json({ error: "Cancellation must be requested first" });
+      return res.status(400).json({
+        error: "Cancellation must be requested before it can be rejected",
+      });
     }
 
-    // Update cancellation fields
+    // Update order fields
     order.cancellationStatus = "Rejected";
     await order.save();
 
+    // Remove original CancellationRequest notification
     await NotificationLog.deleteOne({
       orderId: order._id,
       type: "CancellationRequest",
     });
 
+    // Create enriched CancellationRejected notification
     const notif = await NotificationLog.create({
       userId: order.userId,
       type: "CancellationRejected",
@@ -699,6 +673,7 @@ router.put("/:id/reject-cancel", authToken, async (req, res) => {
       readAt: null,
     });
 
+    // Broadcast delete + create
     broadcastEntity(
       "notification",
       { orderId: order._id.toString(), action: "delete" },
