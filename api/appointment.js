@@ -229,6 +229,17 @@ router.get("/user/:userId", authToken, async (req, res) => {
       return res.status(200).json([]);
     }
 
+    const formattedAppointments = appointments.map((appt) => ({
+      appointmentId: appt._id.toString(),
+      service: appt.service_Type,
+      date: appt.date,
+      time: appt.time,
+      price: appt.service_Charge,
+      paymentMethod: appt.payment?.method ?? "N/A",
+      paymentStatus: appt.payment?.status ?? "Pending",
+      status: appt.status,
+    }));
+
     console.log(
       `📅 User ${userId} has ${appointments.length} completed appointments`
     );
