@@ -1,69 +1,52 @@
+// scripts/fixCancelledOrders.js
 import mongoose from "mongoose";
-import Order from "./models/Orders.js";
-import NotificationLog from "./models/NotificationLog.js";
-import Product from "./models/Product.js";
 import dotenv from "dotenv";
+import Order from "./models/Orders.js"; // adjust path to your Order model
 
 dotenv.config();
 
-async function syncNotifications() {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
+async function run() {
+  await mongoose.connect(process.env.MONGO_URI);
 
-    console.log("🔗 Connected to MongoDB");
+  console.log("🔍 Starting cancelled orders fix...");
 
-    // Find all notifications missing enriched fields
-    const notifications = await NotificationLog.find({
-      type: {
-        $in: [
-          "CancellationRequest",
-          "CancellationAccepted",
-          "CancellationRejected",
-        ],
-      },
+  // Find orders where items are Cancelled but order.status is not Cancelled
+  const badOrders = await Order.find({
+    "items.status": "Cancelled",
+    status: { $ne: "Cancelled" },
+  });
+
+  console.log(`Found ${badOrders.length} orders with mismatch`);
+
+  for (const order of badOrders) {
+    const prevStatus = order.status;
+
+    // Update order status
+    order.status = "Cancelled";
+    order.cancellationStatus = order.cancellationStatus || "Accepted";
+    order.cancelledAt = order.cancelledAt || new Date();
+
+    // Normalize all items to Cancelled
+    order.items = order.items.map((item) => {
+      const plain =
+        typeof item.toObject === "function" ? item.toObject() : item;
+      return { ...plain, status: "Cancelled" };
     });
 
-    console.log(`📦 Found ${notifications.length} notifications to check`);
+    await order.save();
 
-    for (const notif of notifications) {
-      if (!notif.orderId) continue;
-
-      const order = await Order.findById(notif.orderId).populate({
-        path: "items.product",
-        select: "productName specification price image",
-      });
-
-      if (!order) {
-        console.warn(`⚠️ No order found for notification ${notif._id}`);
-        continue;
-      }
-
-      // Update notification with missing fields
-      notif.customerEmail = order.customerEmail;
-      notif.customerPhone = order.customerPhone;
-      notif.deliveryAddress = order.deliveryAddress;
-      notif.paymentMethod = order.paymentMethod;
-      notif.totalOrder = order.totalOrder;
-      notif.notes = order.notes;
-      notif.items = order.items;
-      notif.payment = {
-        cancellationStatus: order.cancellationStatus,
-        cancellationReason: order.cancellationReason,
-        cancelledAt: order.cancelledAt ?? null,
-      };
-
-      await notif.save();
-      console.log(
-        `✅ Updated notification ${notif._id} with enriched order data`
-      );
-    }
-
-    console.log("🎉 Sync complete");
-    process.exit(0);
-  } catch (err) {
-    console.error("❌ Error syncing notifications:", err.message);
-    process.exit(1);
+    console.log("✅ Fixed order:", {
+      orderId: order._id.toString(),
+      prevStatus,
+      newStatus: order.status,
+    });
   }
+
+  console.log("🎉 Finished fixing cancelled orders");
+  await mongoose.disconnect();
 }
 
-syncNotifications();
+run().catch((err) => {
+  console.error("❌ Error running fix script:", err);
+  process.exit(1);
+});
