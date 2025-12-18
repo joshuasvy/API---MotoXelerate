@@ -213,38 +213,31 @@ router.get("/user/:userId", authToken, async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // ✅ Query only completed appointments for this user
     const appointments = await Appointments.find({
       userId,
       status: "Completed",
     })
       .sort({ date: -1 })
-      .select(
-        "customer_Name service_Type mechanic date time status service_Charge payment"
-      )
+      .select("service_Type service_Charge payment mechanic date time status")
       .lean();
 
     if (!appointments || appointments.length === 0) {
-      console.warn(`⚠️ No completed appointments found for user: ${userId}`);
       return res.status(200).json([]);
     }
 
+    // ✅ Format for frontend
     const formattedAppointments = appointments.map((appt) => ({
-      appointmentId: appt._id.toString(),
-      service: appt.service_Type,
-      date: appt.date,
-      time: appt.time,
-      price: appt.service_Charge,
+      appointmentId: appt._id?.toString() ?? "",
+      service: appt.service_Type ?? "—",
+      date: appt.date ?? "",
+      time: appt.time ?? "",
+      price: appt.service_Charge ?? 0,
       paymentMethod: appt.payment?.method ?? "N/A",
       paymentStatus: appt.payment?.status ?? "Pending",
-      status: appt.status,
+      status: appt.status ?? "Pending",
     }));
 
-    console.log(
-      `📅 User ${userId} has ${appointments.length} completed appointments`
-    );
-
-    return res.status(200).json(appointments);
+    return res.status(200).json(formattedAppointments);
   } catch (err) {
     console.error("❌ Failed to fetch appointments:", err.message);
     return res.status(500).json({ error: "Internal server error" });
