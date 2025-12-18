@@ -653,7 +653,7 @@ router.put("/:id/accept-cancel", authToken, async (req, res) => {
   }
 });
 
-rrouter.put("/:id/reject-cancel", authToken, async (req, res) => {
+router.put("/:id/reject-cancel", authToken, async (req, res) => {
   try {
     const orderId = req.params.id;
     const order = await Order.findById(orderId).populate({
