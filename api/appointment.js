@@ -213,7 +213,11 @@ router.get("/user/:userId", authToken, async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const appointments = await Appointments.find({ userId })
+    // ✅ Query only completed appointments for this user
+    const appointments = await Appointments.find({
+      userId,
+      status: "Completed",
+    })
       .sort({ date: -1 })
       .select(
         "customer_Name service_Type mechanic date time status service_Charge payment"
@@ -221,10 +225,15 @@ router.get("/user/:userId", authToken, async (req, res) => {
       .lean();
 
     if (!appointments || appointments.length === 0) {
-      return res.status(404).json({ message: "No appointments found" });
+      console.warn(`⚠️ No completed appointments found for user: ${userId}`);
+      return res.status(200).json([]);
     }
 
-    return res.status(200).json({ appointments });
+    console.log(
+      `📅 User ${userId} has ${appointments.length} completed appointments`
+    );
+
+    return res.status(200).json(appointments);
   } catch (err) {
     console.error("❌ Failed to fetch appointments:", err.message);
     return res.status(500).json({ error: "Internal server error" });
