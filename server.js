@@ -60,7 +60,12 @@ app.use(
       "https://motoxcelerate.com",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Cache-Control", // ✅ add this
+      "X-Requested-With", // optional, often used
+    ],
     credentials: true,
   })
 );
