@@ -284,12 +284,12 @@ router.get("/user/:userId", async (req, res) => {
         strictPopulate: false,
       });
 
-    // ✅ Only keep completed orders
-    const completedOrders = orders.filter(
-      (order) => order.status === "Completed"
+    // ✅ Only keep orders where at least one item is Completed
+    const completedOrders = orders.filter((order) =>
+      order.items.some((item) => item.status === "Completed")
     );
 
-    if (!completedOrders || completedOrders.length === 0) {
+    if (completedOrders.length === 0) {
       console.warn("⚠️ No completed orders found for user:", userId);
       return res.status(200).json([]);
     }
