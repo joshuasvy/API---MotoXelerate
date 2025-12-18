@@ -284,12 +284,17 @@ router.get("/user/:userId", async (req, res) => {
         strictPopulate: false,
       });
 
-    if (!orders || orders.length === 0) {
-      console.warn("⚠️ No orders found for user:", userId);
+    // ✅ Only keep completed orders
+    const completedOrders = orders.filter(
+      (order) => order.status === "Completed"
+    );
+
+    if (!completedOrders || completedOrders.length === 0) {
+      console.warn("⚠️ No completed orders found for user:", userId);
       return res.status(200).json([]);
     }
 
-    const formattedOrders = orders.map((order) => {
+    const formattedOrders = completedOrders.map((order) => {
       const formattedItems = (order.items || [])
         .map((item, itemIndex) => {
           const product = item.product;
@@ -315,8 +320,8 @@ router.get("/user/:userId", async (req, res) => {
         .filter(Boolean);
 
       return {
-        _id: order._id, // ✅ MongoDB ObjectId
-        orderId: order._id.toString(), // ✅ optional alias if you want to keep using "orderId"
+        _id: order._id,
+        orderId: order._id.toString(),
         customerName: order.customerName,
         customerEmail: order.customerEmail,
         customerPhone: order.customerPhone,
@@ -330,7 +335,9 @@ router.get("/user/:userId", async (req, res) => {
       };
     });
 
-    console.log("🧾 Final formattedOrders:", formattedOrders);
+    console.log(
+      `🧾 Final formattedOrders for user ${userId}: ${formattedOrders.length} completed orders`
+    );
     res.status(200).json(formattedOrders);
   } catch (err) {
     console.error("❌ Failed to fetch orders:", err.message);
