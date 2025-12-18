@@ -29,7 +29,7 @@ export async function sendVerificationEmail(to, token) {
       
       <!-- Logo -->
       <div style="text-align:center; margin-bottom:20px;">
-        <img src="https://github.com/joshuasvy/motoXelerate-mobile-app-/blob/main/assets/Images/logo/motoxelerate.png?raw=true"
+        <img src="https://github.com/joshuasvy/motoXelerate-mobile-app-/blob/main/assets/Images/logo/motoxelerate-icon.png"
              alt="MotoXelerate Logo"
              style="width:140px; height:auto;" />
       </div>
@@ -42,21 +42,12 @@ export async function sendVerificationEmail(to, token) {
 
       <!-- Button -->
       <div style="text-align:center; margin-bottom:30px;">
-     <table border="0" cellspacing="0" cellpadding="0">
-  <tr>
-    <td align="center" bgcolor="#358F59" style="border-radius:8px;">
-      <a href="${url}" target="_blank"
-         style="display:inline-block; font-size:16px; font-weight:bold;
-                color:#ffffff; text-decoration:none; padding:14px 28px;
-                font-family:Arial, sans-serif;">
-        Verify My Email
-      </a>
-    </td>
-  </tr>
-</table>
-
-
-       
+       <a href="${url}" target="_blank"
+   style="background:#358F59; color:#fff; padding:14px 28px; 
+          text-decoration:none; border-radius:8px; font-weight:bold; 
+          font-size:16px; display:inline-block;">
+  Verify My Email
+</a>
 <p>If the button doesn’t work, copy and paste this link into your browser:</p>
 <p><a href="${url}">${url}</a></p>
 
