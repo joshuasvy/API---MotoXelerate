@@ -281,6 +281,7 @@ router.get("/users", async (req, res) => {
     const users = await Users.find().select(
       "firstName lastName contact email address"
     );
+    console.log("Raw user data:", users);
     res.status(200).json(users);
   } catch (err) {
     console.error("❌ Failed to fetch users:", err.message);
