@@ -279,50 +279,13 @@ router.get("/all", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const users = await Users.find().select(
-      "firstName lastName contact email address"
-    );
-    console.log("Raw user data:", users);
+      "firstName lastName contact email address image"
+    ); // include image too
+    console.log("Raw user data:", users); // ✅ now defined
     res.status(200).json(users);
   } catch (err) {
     console.error("❌ Failed to fetch users:", err.message);
     res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.get("/:userId/order-updates", async (req, res) => {
-  const { userId } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    console.warn(`[WARN] Invalid userId format: ${userId}`);
-    return res.status(400).json({ error: "Invalid user ID" });
-  }
-
-  try {
-    console.log(`[INFO] Fetching order updates for userId: ${userId}`);
-
-    const updates = await Orders.find({ userId })
-      .sort({ updatedAt: -1 })
-      .select("_id updatedAt items") // include order ID and items
-      .populate({
-        path: "items.product",
-        select: "_id productName image", // include product name and image
-      });
-
-    if (!updates || updates.length === 0) {
-      console.log(`[INFO] No order updates found for userId: ${userId}`);
-      return res.status(200).json([]);
-    }
-
-    console.log(
-      `[INFO] Found ${updates.length} order updates for userId: ${userId}`
-    );
-    res.json(updates);
-  } catch (err) {
-    console.error(
-      `[ERROR] Failed to fetch order updates for userId: ${userId}`,
-      err
-    );
-    res.status(500).json({ error: "Failed to fetch order updates" });
   }
 });
 
@@ -338,8 +301,8 @@ router.post("/upload/:id", upload.single("image"), async (req, res) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: "user_profile", // ✅ optional folder
-            upload_preset: "MotoXelerate", // ✅ correct preset name
+            folder: "user_profile",
+            upload_preset: "MotoXelerate",
           },
           (error, result) => {
             if (result) {
@@ -394,6 +357,43 @@ router.put("/:id", authToken, async (req, res) => {
   } catch (err) {
     console.error("❌ PUT /user/:id error:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/:userId/order-updates", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.warn(`[WARN] Invalid userId format: ${userId}`);
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+
+  try {
+    console.log(`[INFO] Fetching order updates for userId: ${userId}`);
+
+    const updates = await Orders.find({ userId })
+      .sort({ updatedAt: -1 })
+      .select("_id updatedAt items") // include order ID and items
+      .populate({
+        path: "items.product",
+        select: "_id productName image", // include product name and image
+      });
+
+    if (!updates || updates.length === 0) {
+      console.log(`[INFO] No order updates found for userId: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    console.log(
+      `[INFO] Found ${updates.length} order updates for userId: ${userId}`
+    );
+    res.json(updates);
+  } catch (err) {
+    console.error(
+      `[ERROR] Failed to fetch order updates for userId: ${userId}`,
+      err
+    );
+    res.status(500).json({ error: "Failed to fetch order updates" });
   }
 });
 
